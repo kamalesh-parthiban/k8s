@@ -97,5 +97,5 @@ spec:
     app: my-app             # Must match Deployment's pod template labels
   type: LoadBalancer         # Exposes service externally via cloud load balancer
   ports:
-    - port: 80              # Port the Service listens on (external-facing)
+    - port: 80              # Port the Service listens on (external-facing)   # port can be any number you want — it's the port the Service listens on.
       targetPort: 80        # Must match containerPort in the Deployment      # Port on the pod to forward traffic to
