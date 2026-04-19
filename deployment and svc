@@ -23,7 +23,7 @@ spec:
         - name: my-app        # Container name inside the pod
           image: nginx:latest # Docker image to run (tag = latest)
           ports:
-            - containerPort: 80  # Container listens on port 80 (HTTP)
+            - containerPort: 80  # Container listens on port 80 (HTTP)  //Nginx by default runs on port 80 — that's why it's 80.
 
 
 ── RESOURCE LIMITS
