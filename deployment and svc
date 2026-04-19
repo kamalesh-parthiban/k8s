@@ -3,9 +3,6 @@ kind: Deployment              # Resource type — manages a set of replica pods
 metadata:
   name: my-app                # Unique name for this Deployment
   namespace: default          # Logical cluster partition (default = main)
-  labels:
-    app: my-app               # Key-value tag used to group/select resources
-
 
 ── REPLICAS & SELECTOR
 ────────────────────────────────────────────────────────────
@@ -77,13 +74,13 @@ spec:
 ── VOLUMES
 ────────────────────────────────────────────────────────────
           volumeMounts:
-            - name: config-volume
-              mountPath: /etc/config    # Mount point inside the container
+            - name: nginx-storage
+              mountPath: /usr/share/nginx/html   # Mount point inside the container
 
       volumes:
-        - name: config-volume           # Must match volumeMounts name above
-          configMap:
-            name: my-configmap          # ConfigMap object mounted as files
+        - name: nginx-storage
+          persistentVolumeClaim:
+            claimName: nginx-pvc
 
 
 ============================================================
