@@ -1,0 +1,104 @@
+apiVersion: apps/v1           # Kubernetes API version for Deployments
+kind: Deployment              # Resource type — manages a set of replica pods
+metadata:
+  name: my-app                # Unique name for this Deployment
+  namespace: default          # Logical cluster partition (default = main)
+  labels:
+    app: my-app               # Key-value tag used to group/select resources
+
+
+── REPLICAS & SELECTOR
+────────────────────────────────────────────────────────────
+spec:
+  replicas: 3                 # Create 3 identical pod copies (instances)
+  selector:
+    matchLabels:
+      app: my-app             # Deployment manages pods with this label
+
+── POD TEMPLATE
+────────────────────────────────────────────────────────────
+  template:                   # Blueprint for every pod this Deployment creates
+    metadata:
+      labels:
+        app: my-app           # Must match selector.matchLabels above
+    spec:
+      containers:
+        - name: my-app        # Container name inside the pod
+          image: nginx:latest # Docker image to run (tag = latest)
+          ports:
+            - containerPort: 80  # Container listens on port 80 (HTTP)
+
+
+── RESOURCE LIMITS
+────────────────────────────────────────────────────────────
+          resources:
+            requests:         # Minimum guaranteed to this container
+              cpu: "250m"     # 0.25 CPU core reserved
+              memory: "256Mi" # 256 MB RAM reserved
+            limits:           # Maximum the container can use
+              cpu: "500m"     # Hard cap at 0.5 CPU core
+              memory: "512Mi" # Hard cap at 512 MB RAM
+
+
+── HEALTH CHECKS
+────────────────────────────────────────────────────────────
+          livenessProbe:      # Restart pod if this check fails
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10  # Wait 10s before first check
+            periodSeconds: 5         # Check every 5 seconds
+
+          readinessProbe:     # Remove from Service (load balancer) if this fails
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5   # Wait 5s before first check
+            periodSeconds: 3         # Check every 3 seconds
+
+  NOTE:
+    livenessProbe  failure → pod gets RESTARTED
+    readinessProbe failure → pod gets REMOVED FROM TRAFFIC (not restarted)
+
+
+── ENVIRONMENT VARIABLES
+────────────────────────────────────────────────────────────
+          env:
+            - name: APP_ENV
+              value: "production"       # Plain value injected as env var
+
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:           # Pull value from a Kubernetes Secret
+                  name: my-secret       # Secret object name
+                  key: password         # Key inside the Secret
+
+
+── VOLUMES
+────────────────────────────────────────────────────────────
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config    # Mount point inside the container
+
+      volumes:
+        - name: config-volume           # Must match volumeMounts name above
+          configMap:
+            name: my-configmap          # ConfigMap object mounted as files
+
+
+============================================================
+  END
+==========================================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-service     # Unique name for this Service
+  namespace: default        # Same namespace as the Deployment
+spec:
+  selector:
+    app: my-app             # Must match Deployment's pod template labels
+  type: LoadBalancer         # Exposes service externally via cloud load balancer
+  ports:
+    - port: 80              # Port the Service listens on (external-facing)
+      targetPort: 80        # Must match containerPort in the Deployment      # Port on the pod to forward traffic to
