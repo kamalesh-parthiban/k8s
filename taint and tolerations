@@ -1,0 +1,31 @@
+what is taint and tolerations?
+
+taint on node
+
+kubectl taint nodes <node-name> key=value:Effect
+
+Three effects:
+
+Effect              Behavior
+NoSchedule          New pods do not tolerate the taint won't be scheduled on the node (existing pods stay)
+PreferNoSchedule    Kubernetes tries to avoid scheduling, but not guaranteed (existing pods stay)
+NoExecute           New pods won't schedule AND existing pods are evicted if they don't tolerate it
+
+
+
+
+Tolerations (applied to Pods)
+
+
+spec:
+  tolerations:
+  - key: "app"
+    operator: "Equal"
+    value: "backend"
+    effect: "NoSchedule"
+
+
+Remove a Taint
+
+kubectl taint nodes node1 app=backend:NoSchedule-   # note the trailing dash
+
