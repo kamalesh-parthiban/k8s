@@ -11,21 +11,72 @@ NoSchedule          New pods do not tolerate the taint won't be scheduled on the
 PreferNoSchedule    Kubernetes tries to avoid scheduling, but not guaranteed (existing pods stay)
 NoExecute           New pods won't schedule AND existing pods are evicted if they don't tolerate it
 
-
-
-
 Tolerations (applied to Pods)
 
+NoSchedule 
+
+Node1 has taint: env=prod:NoSchedule
+
+New pod (no toleration):
+  Kubernetes checks node1 → has taint ❌
+  Cannot schedule here
+        ↓
+  Checks other nodes
+        ↓
+  If other nodes available → schedules there ✅
+  If NO other nodes → stays PENDING ⏳
+  Never goes to Node1 ❌
 
 spec:
   tolerations:
-  - key: "app"
+  - key: "env"
     operator: "Equal"
-    value: "backend"
+    value: "prod"
     effect: "NoSchedule"
 
 
 Remove a Taint
 
-kubectl taint nodes node1 app=backend:NoSchedule-   # note the trailing dash
+kubectl taint nodes node1 env=prod:NoSchedule-   # note the trailing dash
 
+---------------------------------------
+NoExecute
+
+Step 1 — Before taint:
+  Node1: Pod A running ✅
+
+Step 2 — Taint applied:
+  Node1: env=prod:NoExecute
+
+Step 3 — Pod A (no toleration):
+  Kubernetes checks → no toleration ❌
+  Pod A evicted from Node1
+  Pod A moves to another node
+
+Step 4 — New Pod B (has toleration):
+  Kubernetes checks → has toleration ✅
+  Pod B schedules on Node1
+  Pod B stays running
+
+tolerations:
+  - key: "env"
+    operator: "Equal"
+    value: "prod"
+    effect: "NoExecute"
+    tolerationSeconds: 60    # ← stay for 60 seconds then evict
+-------------------------------------------------------------------------
+PreferNoSchedul
+
+Cluster has 3 nodes:
+
+Node1 → taint: PreferNoSchedule
+Node2 → no taint
+Node3 → no taint
+
+New pod (no toleration):
+  Kubernetes prefers Node2 or Node3 ✅
+  Avoids Node1 if possible
+
+If Node2 and Node3 are FULL:
+  Kubernetes schedules on Node1 anyway ✅
+  (no choice!)
