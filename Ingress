@@ -1,0 +1,187 @@
+# ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app
+  annotations:
+    kubernetes.io/ingress.class: nginx   # ← tells which controller to use
+spec:
+  rules:
+  - host: myapp.example.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: api-service            # ← matches Service name below
+            port:
+              number: 80
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web-service            # ← matches Service name below
+            port:
+              number: 80
+
+Ingress (defines routing rules):
+. Ingress Resource — routing rules (you write this)
+--------------------------------------------------------------------------------------------
+we need to expose ingress right?
+
+Yes! The Ingress Controller itself needs to be exposed externely
+The Ingress Controller is just a Pod running inside the cluster — it needs a way to receive external traffic. This is where one LoadBalancer type Service is used.
+
+Service (type: LoadBalancer)   
+----------------------------------------------------------------------------------
+# This is created automatically by Helm — shown here for understanding only
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  type: LoadBalancer        # ← Triggers AWS to provision an ALB
+  selector:
+    app.kubernetes.io/name: ingress-nginx   # ← Points to NGINX controller pod
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+  - name: https
+    port: 443
+    targetPort: 443
+
+-------------------------------------------------------------------------
+Your App Deployments
+
+# api-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api             # ← must match Service selector below
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+      - name: api
+        image: my-api:latest
+        ports:
+        - containerPort: 8080
+---
+# web-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web             # ← must match Service selector below
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: my-web:latest
+        ports:
+        - containerPort: 3000
+
+ClusterIP Services — internal only
+
+# api-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+spec:
+  type: ClusterIP           # ← internal only, no external LB
+  selector:
+    app: api                # ← matches Deployment pod labels above
+  ports:
+  - port: 80
+    targetPort: 8080        # ← maps to container port
+---
+# web-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-service
+spec:
+  type: ClusterIP
+  selector:
+    app: web
+  ports:
+  - port: 80
+    targetPort: 3000
+
+-----------------------------------------
+Diagram
+
+                ┌───────────────────────┐
+                │   Internet / Client   │
+                └──────────┬────────────┘
+                           │
+                           ▼
+                ┌───────────────────────┐
+                │        AWS ALB        │
+                │ (External LoadBalancer) │
+                └──────────┬────────────┘
+                           │
+                           ▼
+        ┌────────────────────────────────────┐
+        │ Service (type: LoadBalancer)       │
+        │ namespace: ingress-nginx           │
+        │ ports: 80, 443                     │
+        └──────────┬─────────────────────────┘
+                   │
+                   ▼
+        ┌────────────────────────────────────┐
+        │ Ingress Controller Pod (NGINX)     │
+        │ Watches ingress + routes traffic   │
+        └──────────┬─────────────────────────┘
+                   │
+                   ▼
+        ┌────────────────────────────────────┐
+        │ Ingress Resource (my-app)          │
+        │ /api  → api-service:80             │
+        │ /web  → web-service:80             │
+        └──────────┬───────────────┬─────────┘
+                   │               │
+                   ▼               ▼
+        ┌────────────────┐   ┌────────────────┐
+        │  api-service   │   │  web-service   │
+        │ ClusterIP:80   │   │ ClusterIP:80   │
+        └──────┬─────────┘   └──────┬─────────┘
+               │                    │
+        ┌──────▼──────┐     ┌──────▼──────┐
+        │ api-pod-1   │     │ web-pod-1   │
+        │ api-pod-2   │     │ web-pod-2   │
+        └─────────────┘     └─────────────┘
+
+Client → ALB → Ingress Controller → Service (ClusterIP) → Pods
+
+AWS ALB
+  ↓
+Service (type: LoadBalancer)   ← this SERVICE is created for Ingress Controller
+  ↓
+Ingress Controller Pod         ← the actual nginx/alb pod
+  ↓
+Ingress Rules (your yaml)      ← your routing config
+  ↓
+ClusterIP Services             ← your app services
+  ↓
+Your App Pods
+
+
