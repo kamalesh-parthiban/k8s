@@ -106,9 +106,11 @@ VPC
 Internet Gateway
 Public subnets (x2)
 Private subnets (x2)
-Elastic IPs for NAT
+Elastic IPs for NAT (x2)     ← for NAT Gateways
 NAT Gateways (x2)
 Route tables
+Bastion EC2
+Elastic IP for Bastion (x1)  ← for SSH access
 ─────────────────────────────
 Security groups (bastion, worker SSH, ALB, EKS)
 ─────────────────────────────
