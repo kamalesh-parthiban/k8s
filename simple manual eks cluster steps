@@ -1,0 +1,208 @@
+Here are the manual steps to create the same EKS cluster that your Terraform file provisions:
+
+Step 1 — Create VPC
+
+AWS Console → VPC → Create VPC
+  Name:       eks-vpc
+  IPv4 CIDR:  10.0.0.0/16
+  DNS hostnames: Enable  ✅
+  DNS resolution: Enable ✅
+
+Step 2 — Create Subnets (2 AZs)
+
+VPC → Subnets → Create Subnet
+
+Subnet 1:
+  VPC:               eks-vpc
+  Name:              eks-public-subnet-1
+  AZ:                us-east-2a
+  CIDR:              10.0.1.0/24
+  Auto-assign IP:    Enable ✅
+
+Subnet 2:
+  VPC:               eks-vpc
+  Name:              eks-public-subnet-2
+  AZ:                us-east-2b
+  CIDR:              10.0.2.0/24
+  Auto-assign IP:    Enable ✅
+
+Step 3 — Create Internet Gateway
+
+VPC → Internet Gateways → Create
+  Name: eks-igw
+
+→ Actions → Attach to VPC → select eks-vpc
+
+Step 4 — Create Route Table
+
+VPC → Route Tables → Create
+  Name: eks-route-table
+  VPC:  eks-vpc
+
+→ Routes tab → Edit routes → Add route
+  Destination: 0.0.0.0/0
+  Target:      eks-igw  (Internet Gateway)
+
+→ Subnet Associations → Edit
+  Associate: eks-public-subnet-1 ✅
+  Associate: eks-public-subnet-2 ✅
+
+Step 5 — Create IAM Role for EKS Cluster
+
+IAM → Roles → Create Role
+  Trusted entity:  AWS Service
+  Use case:        EKS → EKS Cluster
+  
+  Name: eks-cluster-role
+
+Attach policy:
+  ✅ AmazonEKSClusterPolicy
+
+Step 6 — Create IAM Role for Node Group
+
+IAM → Roles → Create Role
+  Trusted entity:  AWS Service
+  Use case:        EC2
+
+  Name: eks-node-role
+
+Attach these 3 policies:
+  ✅ AmazonEKSWorkerNodePolicy
+  ✅ AmazonEKS_CNI_Policy
+  ✅ AmazonEC2ContainerRegistryReadOnly
+
+Step 7 — Create EKS Cluster
+
+EKS → Clusters → Create Cluster
+
+  Name:     my-eks-cluster
+  Version:  latest (1.29 or above)
+  Role:     eks-cluster-role
+
+→ Networking:
+  VPC:      eks-vpc
+  Subnets:  eks-public-subnet-1
+            eks-public-subnet-2
+  Security group: default or create new
+
+→ Cluster endpoint access: Public ✅
+
+→ Click Create  (takes ~10 minutes)
+
+Step 8 — Create Node Group
+
+EKS → Clusters → my-eks-cluster
+→ Compute tab → Add Node Group
+
+  Name:          my-node-group
+  Node IAM role: eks-node-role
+
+→ Next — Compute config:
+  AMI type:       Amazon Linux 2
+  Instance type:  t3.micro
+  Disk size:      20 GB
+
+→ Next — Scaling config:
+  Desired: 2
+  Minimum: 1
+  Maximum: 3
+
+→ Next — Networking:
+  Subnets: eks-public-subnet-1
+           eks-public-subnet-2
+
+→ Create  (takes ~5 minutes)
+
+Step 9 — Connect kubectl to Cluster
+
+# Install AWS CLI + kubectl first
+
+# Update kubeconfig
+aws eks update-kubeconfig \
+  --region us-east-2 \
+  --name my-eks-cluster
+
+# Verify connection
+kubectl get nodes
+
+# Expected output:
+NAME                STATUS   ROLES    AGE
+ip-10-0-1-xx...    Ready    <none>   2m
+ip-10-0-2-xx...    Ready    <none>   2m
+
+Step 10 — Verify Everything
+
+kubectl get nodes          # should show 2 nodes
+kubectl get pods -A        # system pods running
+kubectl cluster-info       # shows cluster endpoint
+
+Terraform vs Manual — What Each Step Maps To
+
+| Terraform Resource            | Manual Step                   |
+| ----------------------------- | ----------------------------- |
+| aws_vpc                       | Step 1 — Create VPC           |
+| aws_subnet x2                 | Step 2 — Create 2 subnets     |
+| aws_internet_gateway          | Step 3 — Create IGW           |
+| aws_route_table               | Step 4 — Create route table   |
+| aws_iam_role eks_cluster_role | Step 5 — IAM role for cluster |
+| aws_iam_role eks_node_role    | Step 6 — IAM role for nodes   |
+| aws_eks_cluster               | Step 7 — Create EKS cluster   |
+| aws_eks_node_group            | Step 8 — Create node group    |
+| outputs                       | Step 9 — kubectl cluster-info |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
