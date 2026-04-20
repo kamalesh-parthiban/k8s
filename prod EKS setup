@@ -1,0 +1,54 @@
+Bottom line:
+
+Master nodes → AWS manages, you never SSH in
+Worker nodes → You own them, SSH via bastion
+
+                          Internet / Users
+                                 |
+                                 v
+               -------------------------------------
+               |   AWS VPC 10.0.0.0/16             |
+               |                                   |
+               |     Application Load Balancer     |
+               |     (Public Subnets | HTTPS 443)  |
+               |          /        \               |
+               |         v          v              |
+               |  ----------------  ----------------
+               |  | Public Subnet1|  | Public Subnet2|
+               |  | 10.0.1.0/24   |  | 10.0.2.0/24   |
+               |  | us-east-2a    |  | us-east-2b    |
+               |  | NAT Gateway   |  | NAT Gateway   |
+               |  ----------------  ----------------
+               |         |                 |
+               |         v                 v
+               |   ----------------   ----------------
+               |   | Bastion Host |   |              |
+               |   | SSH Port 22  |   |              |
+               |   ----------------   ----------------
+               |         |   \              |
+               |         |    \ SSH         |
+               |         v     v            v
+               |   ----------------   ----------------
+               |   | Private Subnet1|  | Private Subnet2|
+               |   | 10.0.3.0/24    |  | 10.0.4.0/24    |
+               |   | Worker Node 1  |  | Worker Node 2  |
+               |   | (t3.medium)    |  | (t3.medium)    |
+               |   ----------------   ----------------
+               |          \            /
+               |           v          v
+               |     -----------------------
+               |     |  EKS Control Plane |
+               |     | API | etcd | sched |
+               |     -----------------------
+               |        /       |       \
+               |       v        v        v
+               |  --------   --------   --------
+               |  |Monitoring| |  ECR  | | IAM  |
+               |  |Prom/Graf | |Docker | |Roles |
+               |  --------   --------   --------
+               |                                   |
+               -------------------------------------
+
+Legend:
+- SSH access to private nodes goes through Bastion Host
+- NAT Gateway provides internet access for private subnets
