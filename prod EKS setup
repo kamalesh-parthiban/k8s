@@ -92,10 +92,11 @@ Traffic spike: add 5 more nodes → ALB automatically
 
 
 
+--------------------------------------------
+NAT Gateway
 
-
-
-
+NAT Gateway = "Inside -> outside only"
+No direct "Outside -> Inside"
 
 
 
