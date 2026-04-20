@@ -52,3 +52,56 @@ Worker nodes → You own them, SSH via bastion
 Legend:
 - SSH access to private nodes goes through Bastion Host
 - NAT Gateway provides internet access for private subnets
+
+
+why we need ALB?
+
+Without ALB — users hit your servers directly:
+
+User 1 ──→ Worker Node 1 (overloaded 😵)
+User 2 ──→ Worker Node 1 (overloaded 😵)
+User 3 ──→ Worker Node 1 (overloaded 😵)
+User 4 ──→ ??? (Worker Node 2 sitting idle 😴)
+
+With ALB — traffic is distributed smartly:
+
+User 1 ──→ ALB ──→ Worker Node 1
+User 2 ──→ ALB ──→ Worker Node 2
+User 3 ──→ ALB ──→ Worker Node 1
+User 4 ──→ ALB ──→ Worker Node 2
+
+ALB gives you 5 key things:
+1. Load balancing
+Spreads incoming traffic evenly across all worker nodes. No single node gets overwhelmed.
+2. Single entry point
+Users hit one URL (e.g. api.myapp.com) — they don't need to know about your internal IPs or how many nodes you have.
+3. SSL/TLS termination
+ALB handles HTTPS (port 443) and the SSL certificate. Your worker nodes only deal with plain HTTP internally — simpler and faster.
+4. Health checks
+ALB constantly checks → "Is Worker Node 1 healthy?"
+If node goes down    → ALB stops sending traffic to it
+                     → all traffic goes to healthy nodes
+User never notices the failure
+
+5. Scales with you
+
+Normal day:   2 worker nodes → ALB balances between 2
+Traffic spike: add 5 more nodes → ALB automatically 
+               includes them, no config change needed
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
