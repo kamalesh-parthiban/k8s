@@ -1,5 +1,39 @@
 Full Comparison Now
 
+is both are load balancer?
+
+ALB Controller                NGINX Controller
+──────────────                ────────────────
+Is it a LB?    ❌ No          Is it a LB?    ✅ Yes
+What is it?    Manager pod    What is it?    LB pod
+Who does LB?   AWS ALB        Who does LB?   NGINX itself
+LB location?   Outside EKS    LB location?   Inside EKS
+
+ALB Controller
+══════════════
+It is just a POD
+It is a MANAGER / OPERATOR
+
+NGINX Controller
+════════════════
+It is a POD
+But this pod ITSELF does load balancing
+
+ALB Controller:
+───────────────
+ALB Controller (pod) → just creates and manages ALB
+        ↓
+AWS ALB              → actually does load balancing
+        ↓
+distributes traffic across pods ✅
+
+
+NGINX Controller:
+─────────────────
+NGINX Controller (pod) → itself does load balancing
+        ↓
+distributes traffic across pods ✅
+
 ALB Controller                  NGINX Controller
 ──────────────                  ────────────────
 Ingress YAML                    Ingress YAML
@@ -120,3 +154,15 @@ admin.myapp.com → admin-service
 Interview Answer:
 
 "Ingress is a Kubernetes resource that defines routing rules for external traffic. Instead of creating a separate LoadBalancer for every service, you create one Ingress with rules like host-based or path-based routing to direct traffic to the right service. The Ingress resource itself does nothing — it needs a controller like ALB Controller or NGINX Controller to read the rules and implement them."
+
+
+Simple summary:
+
+NLB = just a delivery truck
+      cannot sort packages
+      needs NGINX warehouse manager
+
+ALB = smart delivery truck
+      sorts packages itself
+      no warehouse manager needed ✅
+
