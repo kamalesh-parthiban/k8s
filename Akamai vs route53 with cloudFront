@@ -134,8 +134,65 @@ NGINX Controller→ no need for ALB   ❌
 Never use both together
 Pick ONE based on your scale ✅
 
+---------------------------
+Akamai does all this auto CDN + WAF + DDoS + Security does CloudFron also does auto?
 
+Akamai — Almost All Automatic
 
+Akamai:
+────────
+CDN     → ✅ automatic out of the box
+WAF     → ✅ automatic rules pre-configured
+DDoS    → ✅ automatic detection and blocking
+SSL     → ✅ automatic
+Caching → ✅ automatic smart caching
+Routing → ✅ automatic nearest edge
+
+CloudFront — NOT fully automatic
+
+CloudFront:
+────────────
+CDN     → ✅ automatic out of the box
+WAF     → ❌ NOT automatic
+            you must:
+            → create AWS WAF separately
+            → write WAF rules manually
+            → attach WAF to CloudFront manually
+DDoS    → ⚠️ partially automatic
+            Shield Standard → automatic free basic
+            Shield Advanced → manual setup $3000/month
+SSL     → ✅ automatic via ACM
+Caching → ⚠️ you must configure cache rules manually
+
+Feature         Akamai              CloudFront
+───────         ──────              ──────────
+CDN             ✅ auto             ✅ auto
+WAF             ✅ auto             ❌ manual setup
+DDoS            ✅ auto             ⚠️ basic auto
+                                     advanced manual
+SSL             ✅ auto             ✅ auto
+Caching rules   ✅ auto smart       ❌ manual config
+Security rules  ✅ pre configured   ❌ you write rules
+Setup effort    low (team helps)    medium (you do it)
+Maintenance     low (Akamai team)   medium (your team)
+
+What You Must Do Manually in CloudFront
+
+Step 1: Create CloudFront distribution
+Step 2: Create AWS WAF separately
+          → go to WAF console
+          → create web ACL
+          → add rules manually:
+              block SQL injection
+              block XSS
+              block bad bots
+              rate limiting
+Step 3: Attach WAF to CloudFront
+Step 4: Configure cache behaviors
+Step 5: Setup Shield Advanced (if needed)
+Step 6: Monitor and tune rules yourself
+
+Akamai = fully managed automatic (expensive) — CloudFront = you get the tools but configure yourself (cheap) — like buying a fully built house vs buying materials and building yourself! 🏠
 
 
 
