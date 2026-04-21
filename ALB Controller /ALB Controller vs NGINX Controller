@@ -166,3 +166,64 @@ ALB = smart delivery truck
       sorts packages itself
       no warehouse manager needed ✅
 
+---------------------------------------------
+so we cant use one ALB for 400 deployment?
+
+Great question! Technically you CAN use one ALB for 400 services — but there are limits!
+
+One ALB for 400 Services — The Problem
+
+ALB has hard limits:
+
+Listener rules per ALB  → max 100 rules (default)
+                           max 300 rules (after limit increase)
+Target Groups per ALB   → max 100 (default)
+
+Your company has 400+ services
+→ 400 rules needed
+→ exceeds ALB limits ❌
+
+What You Can Do with One ALB
+
+Option 1: Request limit increase from AWS
+  default  : 100 rules
+  max limit: 300 rules  ← still not enough for 400+ ❌
+
+Option 2: Use multiple ALBs
+  ALB 1 → services 1-100
+  ALB 2 → services 101-200
+  ALB 3 → services 201-300
+  ALB 4 → services 301-400
+  4 ALBs × $20 = $80/month
+  Still cheaper than 400 ALBs ✅
+  But complex to manage ❌
+
+NGINX vs One ALB for 400 Services
+
+One ALB approach:
+─────────────────
+❌ hits 300 rule limit
+❌ need 2+ ALBs anyway
+❌ complex rule management
+❌ no Akamai integration
+❌ AWS only
+
+ONE ALB Controller pod
+        ↓
+manages ALL these ALBs:
+
+  ALB 1 → services 1-100
+  ALB 2 → services 101-200
+  ALB 3 → services 201-300
+  ALB 4 → services 301-400
+
+One controller → many ALBs ✅
+
+NGINX approach:
+───────────────
+✅ unlimited routing rules
+✅ one NGINX handles 400+
+✅ simple nginx.conf rules
+✅ Akamai sits in front
+✅ any cloud
+✅ $20/month only
