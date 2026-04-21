@@ -1,0 +1,207 @@
+Route 53                        Akamai
+────────────────                ──────────────────
+Just DNS                        DNS + CDN + WAF + DDoS + Security
+points domain to IP             does everything Route 53 does PLUS more
+no caching                      caches content globally
+no WAF                          blocks attacks
+no DDoS protection              absorbs DDoS attacks
+no CDN                          200+ edge locations
+AWS only                        global network
+cheap ($0.50/zone)              expensive (enterprise pricing)
+----------------------------------------------
+
+Real Difference in Attack Scenario
+
+With Route 53 only:
+───────────────────
+Attacker sends 1 million requests/sec
+        ↓
+Route 53 just points to your NLB
+        ↓
+1 million requests hit your NLB ❌
+        ↓
+NLB overwhelmed
+        ↓
+Your app goes down ❌
+
+With Akamai:
+────────────
+Attacker sends 1 million requests/sec
+        ↓
+Akamai absorbs the attack at edge
+        ↓
+Only legitimate traffic reaches NLB ✅
+        ↓
+Your app stays up ✅
+---------------------------------------
+Why Your Company Chose Akamai over just Route 53?
+
+Your company needs:
+  ✅ Global users          → Akamai 200+ locations
+  ✅ DDoS protection       → Akamai absorbs attacks
+  ✅ WAF                   → Akamai blocks attacks
+  ✅ High performance      → Akamai caches content
+  ✅ SSL at edge           → Akamai terminates SSL
+  ✅ Enterprise SLA        → Akamai 99.99% uptime
+
+Route 53 alone cannot provide any of these ❌
+
+CloudFront vs Akamai Full Comparison
+
+Feature           CloudFront          Akamai
+───────           ──────────          ──────
+CDN               ✅ 220+ locations   ✅ 4000+ locations
+WAF               ✅ AWS WAF          ✅ enterprise WAF
+DDoS basic        ✅ Shield free      ✅ included
+DDoS enterprise   ✅ $3000/month      ✅ included
+SSL               ✅ free ACM         ✅ included
+Edge locations    220+                4000+
+Setup             ✅ easy             ❌ complex
+Cost              ✅ cheap            ❌ very expensive
+AWS native        ✅ yes              ❌ no
+Performance       good                better
+Support           AWS support         dedicated team
+Best for          most companies ✅   large enterprise
+
+
+Cost Comparison
+
+CloudFront stack:
+  Route 53        : $0.50/month
+  CloudFront      : pay per use (~$10-50/month)
+  AWS WAF         : $5/month + $1/million requests
+  Shield Standard : FREE ✅
+  ACM SSL         : FREE ✅
+  Total           : ~$20-60/month ✅
+
+Akamai stack:
+  Akamai          : $2000-10000/month ❌
+  Total           : thousands/month
+
+Stack 1 — CloudFront + ALB Controller:
+
+Route 53
+    ↓
+CloudFront
+  ✅ CDN
+  ✅ WAF
+  ✅ DDoS
+  ✅ SSL
+    ↓
+ALB                    ← created by ALB Controller
+  ✅ does routing
+  ✅ path based rules
+    ↓
+Pods
+
+Stack 2 — CloudFront + NGINX Controller:
+
+Route 53
+    ↓
+CloudFront
+  ✅ CDN
+  ✅ WAF
+  ✅ DDoS
+  ✅ SSL
+    ↓
+NLB                    ← forwards to NodePort
+    ↓
+NGINX Controller       ← does routing
+  ✅ path based rules
+  ✅ host based rules
+    ↓
+Pods
+
+When to Use Which Stack
+
+Stack 1 (CloudFront + ALB):
+  ✅ small to medium
+  ✅ less than 100 services
+  ✅ simple setup
+  ✅ less maintenance
+
+Stack 2 (CloudFront + NGINX):
+  ✅ large scale
+  ✅ 100+ services
+  ✅ cost saving
+  ✅ more control
+
+Simple Answer
+
+ALB Controller  → no need for NGINX ❌
+NGINX Controller→ no need for ALB   ❌
+
+Never use both together
+Pick ONE based on your scale ✅
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
