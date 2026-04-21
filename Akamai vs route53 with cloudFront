@@ -150,6 +150,63 @@ Routing → ✅ automatic nearest edge
 
 CloudFront — NOT fully automatic
 
+CloudFront
+──────────
+✅ CDN          → yes built in
+✅ WAF          → yes via AWS WAF
+✅ DDoS         → yes via AWS Shield
+✅ SSL          → yes via AWS ACM
+✅ Security     → yes all included
+
+How Each Works
+CDN:
+
+User in India requests image
+        ↓
+CloudFront edge in Mumbai
+serves cached content
+        ↓
+Fast response ✅
+No hit to your server ✅
+
+CloudFront has:
+220+ edge locations globally
+
+WAF:
+
+CloudFront + AWS WAF
+        ↓
+blocks:
+  ✅ SQL injection
+  ✅ XSS attacks
+  ✅ Bad bots
+  ✅ IP blocking
+  ✅ Rate limiting
+  ✅ Geo blocking
+
+DDoS:
+
+CloudFront + AWS Shield
+        ↓
+Shield Standard  → FREE
+  ✅ basic DDoS protection
+  ✅ always on
+  ✅ automatic
+
+Shield Advanced → $3000/month
+  ✅ enterprise DDoS
+  ✅ 24/7 DRT team support
+  ✅ cost protection
+  ✅ real time visibility
+
+SSL:
+
+CloudFront + AWS ACM
+        ↓
+  ✅ free SSL certificate
+  ✅ auto renewal
+  ✅ no manual work
+
 CloudFront:
 ────────────
 CDN     → ✅ automatic out of the box
