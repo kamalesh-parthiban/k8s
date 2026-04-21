@@ -1,0 +1,122 @@
+Full Comparison Now
+
+ALB Controller                  NGINX Controller
+──────────────                  ────────────────
+Ingress YAML                    Ingress YAML
+    ↓                               ↓
+AWS LB Controller               NGINX Controller
+    ↓                               ↓
+Creates ALB directly            Creates NGINX pod
+    ↓                               ↓
+ALB does routing                Needs LB to expose NGINX
+    ↓                               ↓
+Traffic → ALB → Pods            NLB/Classic LB created
+                                    ↓
+                                Traffic → NLB → NGINX → Pods
+
+
+ALB Controller:
+  1 LB = ALB              → directly routes to pods
+  Simpler ✅
+
+NGINX Controller:
+  1 LB = NLB/Classic      → goes to NGINX pod
+  1 NGINX pod             → routes to your pods
+  Two hops ⚠️
+  More control ✅
+
+
+| Feature          | ALB Controller | NGINX Controller    |
+| ---------------- | -------------- | ------------------- |
+| AWS LB created   | ALB            | NLB or Classic      |
+| Extra pod needed | No             | NGINX pod           |
+| Traffic hops     | 1 hop          | 2 hops              |
+| Routing done by  | AWS ALB        | NGINX pod           |
+| Cost             | ALB cost       | NLB + pod resources |
+| Flexibility      | AWS only       | Very flexible       |
+
+Standard NGINX setup          Your Company setup
+────────────────────          ──────────────────
+Ingress YAML                  Ingress YAML
+      ↓                             ↓
+NGINX Controller              NGINX Controller (ArgoCD managed)
+      ↓                             ↓
+NGINX pod created             NGINX pod (replicas: 3 per cluster)
+      ↓                             ↓
+type: LoadBalancer            type: NodePort ← different!
+      ↓                             ↓
+AWS auto creates NLB          NLB created manually/separately
+      ↓                             ↓
+Traffic → NLB → NGINX → Pods  Akamai → NLB → NodePort 30443
+                                    ↓
+                              NGINX (3 clusters)
+                                    ↓
+                              coreiq / discover / iqmod pods
+
+ALB Controller:
+
+Ingress YAML         ← needed to CREATE the ALB
+        ↓
+ALB Controller reads it
+        ↓
+Creates AWS ALB
+        ↓
+Traffic routed ✅
+
+Without Ingress YAML → No ALB created ❌
+
+NGINX Controller:
+
+Helm install         ← creates NLB + NGINX pod (no Ingress needed yet)
+        ↓
+NGINX pod running ✅
+NLB running ✅
+
+Then Ingress YAML    ← needed to CONFIGURE routing rules
+        ↓
+NGINX reads it
+        ↓
+Traffic routed ✅
+
+Without Ingress YAML → NGINX runs but routes nothing ❌
+
+Simple way to remember:
+
+ALB Controller:
+  Ingress YAML = birth certificate of ALB
+  No YAML = No ALB ❌
+
+NGINX Controller:
+  Helm = creates NGINX + NLB
+  Ingress YAML = tells NGINX where to send traffic
+  No YAML = NGINX runs but does nothing ❌
+
+Ingress YAML is waht?
+
+Ingress YAML is a Kubernetes resource that defines routing rules — how external traffic reaches your services inside the cluster.
+
+Simple meaning:
+
+Ingress YAML = Traffic rulebook
+
+Rules like:
+  myapp.com/api   → send to api-service
+  myapp.com/web   → send to web-service
+  admin.myapp.com → send to admin-service
+
+Path vs Host routing:
+
+# Path based routing
+host: myapp.com
+  /api  → api-service
+  /web  → web-service
+  /db   → db-service
+
+# Host based routing
+api.myapp.com   → api-service
+web.myapp.com   → web-service
+admin.myapp.com → admin-service
+
+Interview Answer:
+
+"Ingress is a Kubernetes resource that defines routing rules for external traffic. Instead of creating a separate LoadBalancer for every service, you create one Ingress with rules like host-based or path-based routing to direct traffic to the right service. The Ingress resource itself does nothing — it needs a controller like ALB Controller or NGINX Controller to read the rules and implement them."
