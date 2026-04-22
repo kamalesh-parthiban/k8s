@@ -48,6 +48,16 @@ Traffic → ALB → Pods            NLB/Classic LB created
                                     ↓
                                 Traffic → NLB → NGINX → Pods
 
+so we dont expose Ingress YAML as svc right?
+
+Correct! Ingress YAML is NOT a Service — it is just a rules document.
+
+Ingress YAML = Menu in a restaurant
+               lists what's available
+               where things go
+               BUT menu itself is not the door ❌
+
+Ingress YAML is never exposed as a service — it is just a rulebook. The controller reads the rulebook and the actual exposure happens via ALB (ALB Controller) or NGINX Controller Service (NGINX Controller).
 
 ALB Controller:
   1 LB = ALB              → directly routes to pods
