@@ -1,0 +1,122 @@
+CORDON
+──────────────────────────────────────────────────────────
+
+What it does:
+  → marks node as unschedulable
+  → NO new pods will be scheduled on this node
+  → existing pods keep running normally
+  → nothing is moved or deleted
+
+Think of it as:
+  "closed for new business
+   but existing customers stay"
+
+Command:
+  kubectl cordon <node-name>
+
+Undo:
+  kubectl uncordon <node-name>
+
+Status after cordon:
+  NAME       STATUS                     ROLES
+  node1      Ready,SchedulingDisabled   worker
+
+
+DRAIN
+──────────────────────────────────────────────────────────
+
+What it does:
+  → marks node as unschedulable (like cordon)
+  → ALSO evicts all existing pods from node
+  → pods are rescheduled on other nodes
+  → node becomes completely empty
+
+Think of it as:
+  "closed for business
+   AND existing customers asked to leave"
+
+Command:
+  kubectl drain <node-name> \
+    --ignore-daemonsets \
+    --delete-emptydir-data
+
+Undo:
+  kubectl uncordon <node-name>
+
+Flags explained:
+  --ignore-daemonsets      → skip daemonset pods
+                             (they run on every node anyway)
+  --delete-emptydir-data   → delete pods using emptyDir volume
+                             (data will be lost)
+  --force                  → delete pods not managed by controller
+
+
+COMPARISON TABLE
+──────────────────────────────────────────────────────────
+
+Action                    cordon      drain
+─────────────────────────────────────────────────────────
+blocks new pods           ✅ yes      ✅ yes
+evicts existing pods      ✗ no        ✅ yes
+node becomes empty        ✗ no        ✅ yes
+pods rescheduled          ✗ no        ✅ yes
+daemonsets removed        ✗ no        ✗ no (skip flag needed)
+undo with uncordon        ✅ yes      ✅ yes
+
+
+WHEN TO USE WHAT
+──────────────────────────────────────────────────────────
+
+cordon → you want to stop new pods going to a node
+         but dont want to disturb running pods
+         example:
+           node showing high CPU
+           want to investigate without disruption
+
+drain  → you want to take node completely offline
+         for maintenance, upgrade, or replacement
+         example:
+           patching OS on node
+           replacing node hardware
+           kubernetes version upgrade
+           node is going to be deleted
+
+
+REAL WORLD FLOW (node maintenance)
+──────────────────────────────────────────────────────────
+
+Step 1 → drain the node
+         kubectl drain node1 --ignore-daemonsets
+
+Step 2 → do your maintenance
+         (patch OS, upgrade kernel, replace hardware)
+
+Step 3 → bring node back
+         kubectl uncordon node1
+
+Step 4 → verify node is schedulable again
+         kubectl get nodes
+
+
+WHAT HAPPENS TO DAEMONSETS
+──────────────────────────────────────────────────────────
+
+daemonsets run on EVERY node by design
+  example: log collectors, monitoring agents
+
+drain cannot remove daemonset pods
+so you must pass --ignore-daemonsets flag
+otherwise drain will refuse to run
+
+kubectl drain node1 --ignore-daemonsets ✅
+
+
+INTERVIEW ONE-LINER
+──────────────────────────────────────────────────────────
+
+"cordon just stops new pods from being scheduled
+ on a node. drain goes further — it evicts all
+ existing pods too so the node is completely
+ empty and safe for maintenance. After maintenance
+ we uncordon to bring the node back into
+ rotation." ✅
