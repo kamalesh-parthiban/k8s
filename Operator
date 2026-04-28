@@ -1,0 +1,32 @@
+What is an Operator?
+
+An Operator is a custom controller that automates the management of complex, stateful applications on Kubernetes.
+
+You create a Custom Resource (CR)
+        ↓
+Operator watches for it
+        ↓
+Operator takes action (like a human DBA would)
+        ↓
+Operator keeps reconciling to match desired state
+
+
+Operator = CRD + Custom Controller
+
+CRD (Custom Resource Definition)
+→ defines the new object type (e.g. MySQLCluster)
+
+Custom Controller
+→ watches for that object and acts on it
+
+Together = Operator
+
+what statefullset in k8s 
+
+The Operator then automatically:
+
+Creates StatefulSets
+Sets up replication between instances
+Handles failover
+Takes backups
+Manages config 
