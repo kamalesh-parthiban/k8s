@@ -1,0 +1,124 @@
+what is pv and pvc
+
+PV — PersistentVolume:
+
+Actual storage provisioned by admin
+Can be AWS EBS, NFS, Azure Disk, local disk etc.
+Lives independent of any pod
+Cluster-level resource (no namespace)
+
+PVC — PersistentVolumeClaim:
+
+A request for storage by developer/pod
+Says "I need 10Gi with ReadWriteOnce"
+Namespace-level resource
+Kubernetes finds a matching PV and binds them
+
+Full Flow:
+
+1. Admin creates PV (10Gi)
+        ↓
+2. Developer creates PVC (requests 10Gi)
+        ↓
+3. Kubernetes matches PV ↔ PVC (BOUND)
+        ↓
+4. Pod mounts PVC
+        ↓
+5. Pod reads/writes to actual storage
+
+
+Access Modes (PVC)
+
+
+        ┌───────────────────────┬──────────────────────────────┬────────────────────────────┐
+        │ Mode                  │ Meaning                      │ Use Case                   │
+        ├───────────────────────┼──────────────────────────────┼────────────────────────────┤
+        │ ReadWriteOnce (RWO)   │ One node read + write        │ MySQL, MongoDB             │
+        ├───────────────────────┼──────────────────────────────┼────────────────────────────┤
+        │ ReadOnlyMany (ROX)    │ Many nodes read only         │ Static files               │
+        ├───────────────────────┼──────────────────────────────┼────────────────────────────┤
+        │ ReadWriteMany (RWX)   │ Many nodes read + write      │ Shared storage (NFS)       │
+        └───────────────────────┴──────────────────────────────┴────────────────────────────┘
+
+Reclaim Policies (PV lifecycle)
+
+        ┌───────────────┬──────────────────────────────────────────────────────┐
+        │ Policy        │ What happens to PV                             
+        ├───────────────┼──────────────────────────────────────────────────────┤
+        │ Retain        │ Data stays, manual cleanup required    |         PV still exists, Data still exists, Admin must manually clean up and recreate PV
+        ├───────────────┼──────────────────────────────────────────────────────┤
+        │ Delete        │ PV + data deleted automatically                     
+        ├───────────────┼──────────────────────────────────────────────────────┤
+        │ Recycle       │ Data wiped, PV reusable (deprecated)       |         New PVC can claim it again
+        └───────────────┴──────────────────────────────────────────────────────┘
+
+1. PersistentVolume:
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nginx-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  hostPath:
+    path: /data/nginx          # stores html files here on node
+
+2. PersistentVolumeClaim:
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+3. Deployment:
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1                  # RWO = only 1 pod can mount
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          volumeMounts:
+            - name: nginx-storage
+              mountPath: /usr/share/nginx/html   # nginx serves from here
+      volumes:
+        - name: nginx-storage
+          persistentVolumeClaim:
+            claimName: nginx-pvc
+
+
+Without volumeMount — nginx still works!
+Nginx will serve its default built-in page
+No persistent storage
+If pod restarts → everything inside is lost
