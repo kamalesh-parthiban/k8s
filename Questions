@@ -1,0 +1,191 @@
+we have 5 worker node and replica 5 each pod should place on all node?
+
+Short answer: Not guaranteed by default.
+
+In Kubernetes, if you have:
+
+5 worker nodes
+replicas = 5
+
+👉 The scheduler will try to spread pods, but it does NOT guarantee 1 pod per node unless you explicitly tell it to.
+
+
+🧠 What actually happens by default
+Kubernetes scheduler places pods based on:
+available resources
+constraints (taints, affinity, etc.)
+
+🚀 What is a DaemonSet?
+
+A DaemonSet ensures one pod runs on every node (or selected nodes).
+
+Perfect for:
+
+Logging agents (Fluentd)
+Monitoring (Prometheus node exporter)
+Security agents
+
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: my-daemon
+  template:
+    metadata:
+      labels:
+        app: my-daemon
+    spec:
+      containers:
+      - name: my-container
+        image: nginx
+
+
+kubectl get pods -o wide
+
+
+🎯 Target specific nodes (optional)
+
+If you don’t want it on all nodes, use nodeSelector:
+
+spec:
+  template:
+    spec:
+      nodeSelector:
+        disktype: ssd
+
+👉 Only nodes with label disktype=ssd will run the pod
+
+🧠 How it works (simple diagram)
+
+        Node 1   → Pod 1
+        Node 2   → Pod 2
+        Node 3   → Pod 3
+        Node 4   → Pod 4
+
+A DaemonSet ensures one pod runs on every node, commonly used for node-level agents like logging and monitoring
+
+--------------------------------
+now there are 5 nodes but i want to schedule on 3 nodes?
+
+Step 1: Label the 3 nodes you want
+
+kubectl label nodes node1 env=prod
+kubectl label nodes node2 env=prod
+kubectl label nodes node3 env=prod
+
+Step 2: Update DaemonSet YAML
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: my-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: my-daemon
+  template:
+    metadata:
+      labels:
+        app: my-daemon
+    spec:
+      nodeSelector:
+        env: prod
+      containers:
+      - name: my-container
+        image: nginx
+
+🎯 What happens now?
+
+        Node1 (env=prod) → Pod ✅
+        Node2 (env=prod) → Pod ✅
+        Node3 (env=prod) → Pod ✅
+        Node4            → ❌ No pod
+        Node5            → ❌ No pod
+
+
+👉 Only 3 nodes will run pods
+
+
+🔥 Alternative (more flexible): Node Affinity
+
+If you want more control:
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: env
+          operator: In
+          values:
+          - prod
+
+🧠 Key takeaway
+DaemonSet = runs on all eligible nodes
+You control “eligible” using:
+nodeSelector ✅ (simple)
+nodeAffinity ✅ (advanced)
+
+why not on deployment?
+
+
+With a Deployment:
+
+You control number of pods (replicas)
+❌ You don’t control exact node placement precisely
+
+
+Even if you set:
+
+replicas: 3
+
+👉 Kubernetes may schedule:
+
+Node1 → 2 pods
+Node2 → 1 pod
+Node3 → 0 pod
+
+❌ Not guaranteed 1 pod per node
+❌ Not guaranteed only those 3 nodes unless constrained
+
+Node Affinity Types
+There are 2 main types (and a 3rd upcoming type):
+
+1. requiredDuringSchedulingIgnoredDuringExecution
+Hard rule — Pod must be placed on a matching node. If no node matches, pod stays Pending.
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: disktype
+          operator: In
+          values:
+          - ssd
+
+
+required → strict, non-negotiable
+IgnoredDuringExecution → if node label changes after pod is running, pod is NOT evicted
+
+2. preferredDuringSchedulingIgnoredDuringExecution
+Soft rule — Scheduler tries to place pod on matching node, but if none found, places it anywhere.
+
+affinity:
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 80          # Higher weight = higher preference (1–100)
+      preference:
+        matchExpressions:
+        - key: zone
+          operator: In
+          values:
+          - us-east-1a
+
+preferred → best-effort, never blocks scheduling
+IgnoredDuringExecution → label changes after scheduling are ignored
+weight — multiple preferred rules are scored; highest total wins
