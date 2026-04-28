@@ -189,3 +189,25 @@ affinity:
 preferred → best-effort, never blocks scheduling
 IgnoredDuringExecution → label changes after scheduling are ignored
 weight — multiple preferred rules are scored; highest total wins
+
+---------
+
+How to Login into a Pod in Kubernetes?
+
+kubectl exec -it <pod-name> -- /bin/bash
+
+kubectl exec -it <pod-name> -- /bin/sh
+
+----------------------------------------
+How to get pod IP?
+
+
+Quick Comparison
+
+Command                                              Use case
+---------------------------------------------------------------------------
+kubectl get pod <name> -o wide                       Single pod IP with details
+kubectl get pods -o wide                             All pods IP at once
+kubectl describe pod <name>                          Full pod details including IP
+kubectl get pod <name> -o jsonpath='{.status.podIP}' Only the IP, clean output
+
