@@ -1,0 +1,99 @@
+not all sidecars:
+-------------
+Types of containers in a Pod:
+  ├── Init Container      ← separate category
+  ├── Sidecar Container   ← main category
+  │    ├── Adapter        ← type of sidecar
+  │    └── Ambassador     ← type of sidecar
+  └── Main Container      ← your actual app
+------------------
+
+1. Init Container
+
+A container that runs before the main container starts and then stops.
+
+Wait for database       --  Wait until DB is ready before app starts
+Download config files   --  Pull configs before app needs them
+
+
+initContainers:
+  - name: wait-for-db
+    image: busybox
+    command: ['sh', '-c', 'until nc -z mysql 3306; do sleep 2; done']       or  command: ['sleep', '30']
+mainContainer:
+  - name: my-app
+    image: my-app:latest
+
+
+2. Sidecar Container (Multi Container)
+
+A helper container that runs along with main container inside same pod.
+
+How it Works
+
+Pod
+ ├── Main Container (your app)
+ └── Sidecar Container (helper)
+        ↓
+Both run SIMULTANEOUSLY
+        ↓
+Share same network and storage
+
+
+use cases
+
+Log collection    --   Sidecar collects and ships logs
+
+Monitoring        --   Sidecar sends metrics to Prometheus
+
+
+3. Adapter Container
+
+Every app writes logs in different formats!
+
+Python App logs →  2026-04-07 ERROR NullPointerException
+Ruby App logs  →  [FATAL] :: 07/Apr/2026 :: DB Connection failed
+Go App logs    →  {"level":"error","time":"2026-04-07","msg":"timeout"}
+Java App logs  →  07-Apr-2026 [ERROR] Thread-1 OutOfMemoryError
+
+Problem ⚠️
+
+Monitoring tool cannot understand all different formats
+
+Every app log have different format for python, rupy and go have will have different log format helper(sidecar) container converts output of main container log into a standard format(JSON).
+
+A sidecar that transforms or converts output of main container into a standard format.
+
+
+4. Ambassador Container
+
+A sidecar that acts as a proxy between main container and outside world.
+
+How it Works
+
+Main Container
+wants to connect to database
+        ↓
+Doesnt connect directly
+        ↓
+Ambassador Container acts as proxy
+        ↓
+Handles connection, retries, routing
+        ↓
+Returns response to Main Container
+
+
+Real World Example Together
+
+
+Pod starts
+    ↓
+Init Container → waits for DB to be ready
+    ↓
+Main Container → runs your application
+    ↓
+Adapter Sidecar → converts logs to JSON format
+    ↓
+Ambassador Sidecar → proxies DB connections safely
+    ↓
+Everything works perfectly! 🚀
