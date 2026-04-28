@@ -1,0 +1,226 @@
+Helm in Kubernetes
+Helm is the package manager for Kubernetes — it simplifies deploying and managing applications on a cluster.
+
+
+Core Concepts
+Chart — A Helm package containing all Kubernetes resource definitions (Deployments, Services, ConfigMaps, etc.) needed to run an application.
+Release — A running instance of a chart deployed to a cluster. You can deploy the same chart multiple times as separate releases.
+Repository — A place where charts are stored and shared (like Docker Hub, but for Helm charts).
+Values — Configuration inputs that customize a chart's templates at deploy time.
+
+
+
+How It Works
+
+
+Chart (templates + values.yaml)
+        ↓
+   helm install / upgrade
+        ↓
+  Rendered Manifests
+        ↓
+  Kubernetes API → Resources created
+
+
+Chart Structure
+
+
+my-chart/
+├── Chart.yaml          # Chart metadata (name, version, description)
+├── values.yaml         # Default configuration values
+├── templates/          # Kubernetes manifest templates
+│   ├── deployment.yaml
+│   ├── service.yaml
+│   ├── ingress.yaml
+│   └── _helpers.tpl    # Reusable template snippets
+└── charts/             # Sub-chart dependencies
+
+
+The Chart.yaml file is the metadata manifest for a Helm chart. Every chart must have one.
+
+Minimal Example
+
+Chart.yaml
+
+apiVersion: v2
+name: my-app
+version: 1.0.0
+
+
+values.yaml
+
+replicaCount: 2
+
+image:
+  repository: nginx
+  tag: "1.25"
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  host: myapp.example.com
+
+
+templates/deployment.yaml
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-app
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 80
+
+
+templates/service.yaml
+
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-svc
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    app: {{ .Release.Name }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: 80
+
+
+
+templates/ingress.yaml
+
+
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+spec:
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-svc
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}
+
+
+Install it
+
+Yes! my-release is just a name you choose — call it anything.
+
+helm install my-release ./my-chart
+
+# Override a value
+helm install my-release ./my-chart --set replicaCount=3
+
+# Disable ingress
+helm install my-release ./my-chart --set ingress.enabled=false
+
+
+How they connect
+
+values.yaml
+    │
+    ├──▶ deployment.yaml  (replicaCount, image)
+    ├──▶ service.yaml     (service.type, service.port)
+    └──▶ ingress.yaml     (ingress.enabled, ingress.host)
+
+
+Verify everything is running
+
+# See the release
+helm list
+
+# Check pods
+kubectl get pods
+
+# Check service
+kubectl get svc
+
+# Check ingress
+kubectl get ingress
+
+
+Later — upgrade, rollback, uninstall
+
+
+# Change replicas to 5
+helm upgrade my-release ./my-chart --set replicaCount=5
+
+# Oops, rollback
+helm rollback my-release 1
+
+# Done with it
+helm uninstall my-release
+
+You can even install the same chart multiple times with different names:
+
+helm install dev-app    ./my-chart --set image.tag="1.24"
+helm install staging-app ./my-chart --set image.tag="1.25"
+helm install prod-app   ./my-chart --set image.tag="1.26"
+
+Helm vs kubectl difference (commonly asked)
+
+kubectl → applies raw YAML one by one
+Helm    → manages as a single package with versioning
+
+helm dry-run (interviewers love this)
+
+# See what will be deployed without actually deploying
+helm install my-release ./my-chart --dry-run --debug
+
+Helm Repo commands
+
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+helm search repo nginx
+helm pull bitnami/nginx
+
+Likely Interview Questions & Quick Answers:
+Q: What is a Helm chart?
+
+Package containing all K8s manifests + templates + default values to deploy an app
+
+Q: Difference between Chart and Release?
+
+Chart is the package, Release is a deployed instance of that chart
+
+Q: Can you deploy same chart twice?
+
+Yes, with different release names — dev-app, staging-app, prod-app
+
+Q: How do you rollback in Helm?
+
+helm rollback <release-name> <revision-number>
+
+Q: Where are default values stored?
+
+values.yaml — can be overridden via --set or -f custom-values.yaml
+
+Q: Difference between helm install and helm upgrade?
+
+install → first time deploy, upgrade → update existing release
