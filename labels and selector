@@ -1,0 +1,87 @@
+what is labels and selector?
+
+Labels (applied to any K8s object)
+Labels are key-value pairs attached to objects (pods, nodes, services, deployments, etc.) to identify and organize them.
+
+An object can have multiple labels
+Labels can be added/updated anytime
+
+metadata:
+  labels:
+    app: frontend
+    env: production
+    tier: web
+
+
+Selectors (used to query/filter objects)
+Selectors let you find and group objects based on their labels.
+
+
+1. Equality-based
+
+selector:
+  app: frontend        # app == frontend
+  env: production      # AND env == production
+
+
+Real-World Example
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+spec:                              # 👈 SPEC 1 — Deployment's spec
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend             # manages pods with this label
+  template:
+    metadata:
+      labels:
+        app: frontend             # pods get this label
+    spec:                                                         # 👈 SPEC 2 — Pod's spec
+      containers:              # ← list of containers
+      - name: frontend-app    # ← CONTAINER NAME
+        image: nginx:1.21     # ← IMAGE (name:tag)
+        ports:
+        - containerPort: 80
+
+
+Why Two Specs?
+
+Because there are two different objects here:
+
+Object        Its spec describes
+Spec 1        Deployment   replicas, selector, template
+Spec 2        Pod          containers, volumes, restartPolicy
+
+
+What Each Part Does
+
+label and selector in deployment itself
+
+spec:
+  selector:
+    matchLabels:
+      app: frontend   # 👈 Deployment LOOKS FOR pods with this label
+                      #    (how it tracks & manages its pods)
+
+  template:
+    metadata:
+      labels:
+        app: frontend # 👈 Pods are CREATED WITH this label
+                      #    (so the deployment can find them)
+
+
+What Happens If They Don't Match?
+
+selector:
+  matchLabels:
+    app: frontend    # looking for "frontend"
+
+template:
+  metadata:
+    labels:
+      app: backend   # but pods are created as "backend"
+
+❌ Kubernetes will reject this with a validation error — they must match.
