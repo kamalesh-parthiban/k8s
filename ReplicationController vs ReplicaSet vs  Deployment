@@ -1,0 +1,58 @@
+Difference Between All Three
+
+| Feature             | ReplicationController | ReplicaSet  | Deployment      |
+| ------------------- | --------------------- | ----------- | --------------- |
+| Maintains pod count | Yes                   | Yes         | Yes             |
+| Equality selector   | Yes                   | Yes         | Yes             |
+| Set-based selector  | No                    | Yes         | Yes             |
+| Rolling update      | No (manual)           | No (manual) | Yes (automatic) |
+| Rollback            | No                    | No          | Yes             |
+| Pause/Resume update | No                    | No          | Yes             |
+| Still recommended   | No                    | Rarely      | Yes             |
+
+Deployment
+
+what is Rolling update and rollback
+
+A rolling update means updating pods gradually one by one instead of all at once.
+
+With Rolling Update:
+Old pods die ONE BY ONE → New pods start ONE BY ONE
+         ↓
+   ZERO DOWNTIME ✅
+
+# Or edit directly
+kubectl edit deployment frontend
+
+# Or apply updated yaml
+kubectl apply -f deployment.yaml
+
+Rollback
+Rollback means going back to a previous version if something goes wrong.
+
+v1 running fine ✅
+   ↓
+Update to v2 → something broken ❌
+   ↓
+Rollback to v1 → back to normal ✅
+
+How Rollback Works Internally
+
+Deployment keeps history of ReplicaSets:
+
+ReplicaSet v1  (nginx:1.21)  ← scaled down but NOT deleted
+ReplicaSet v2  (nginx:1.22)  ← current, broken ❌
+
+Rollback → ReplicaSet v1 scales back up ✅
+
+Rollback Commands
+
+# Rollback to previous version immediately
+kubectl rollout undo deployment/frontend
+
+# See rollout history
+kubectl rollout history deployment/frontend
+
+# Rollback to specific version
+kubectl rollout undo deployment/frontend --to-revision=2
+
