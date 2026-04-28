@@ -1,0 +1,231 @@
+1. PENDING
+──────────────────────────────────────────────────────────
+
+Reason:
+  → not enough CPU or memory on nodes
+  → too many pods on node (instance limit)
+  → no nodes match the node selector
+  → PVC not bound (storage not ready)
+  → taint on node, pod has no toleration
+
+Check:
+  kubectl describe pod <pod-name>
+  kubectl get nodes
+  kubectl get events -n <namespace>
+
+Fix:
+  → add more nodes or increase node size
+  → fix resource requests/limits
+  → fix node selector or tolerations
+  → fix PVC / storage class
+
+
+2. CRASHLOOPBACKOFF
+──────────────────────────────────────────────────────────
+
+Reason:
+  → application crashes on startup
+  → wrong command or entrypoint in dockerfile
+  → missing environment variables
+  → missing config files or secrets
+  → app cannot connect to database
+  → out of memory (OOMKilled then restarts)
+
+Check:
+  kubectl logs <pod-name>
+  kubectl logs <pod-name> --previous
+  kubectl describe pod <pod-name>
+
+Fix:
+  → check application logs for error
+  → fix entrypoint / command in deployment
+  → add missing env vars or secrets
+  → fix database connection string
+  → increase memory limit
+
+
+3. OOMKILLED (Out of Memory Killed)
+──────────────────────────────────────────────────────────
+
+Reason:
+  → pod used more memory than its limit
+  → memory leak in application
+  → limit set too low
+
+Check:
+  kubectl describe pod <pod-name>
+  look for: "OOMKilled" in Last State
+
+Fix:
+  → increase memory limit in deployment
+  → fix memory leak in application
+
+  resources:
+    limits:
+      memory: "512Mi"    ← increase this
+    requests:
+      memory: "256Mi"
+
+
+4. IMAGEPULLBACKOFF / ERRIMAGEPULL
+──────────────────────────────────────────────────────────
+
+Reason:
+  → wrong image name or tag
+  → image does not exist in registry
+  → private registry needs credentials
+  → no internet access on node
+
+Check:
+  kubectl describe pod <pod-name>
+  look for: "Failed to pull image"
+
+Fix:
+  → fix image name and tag in deployment
+  → create imagePullSecret for private registry
+  → verify image exists in registry
+
+  kubectl create secret docker-registry regcred \
+    --docker-server=<registry> \
+    --docker-username=<user> \
+    --docker-password=<pass>
+
+
+5. RUNCONTAINERERROR
+──────────────────────────────────────────────────────────
+
+Reason:
+  → container cannot start at all
+  → wrong entrypoint or command
+  → volume mount path does not exist
+  → config map or secret not found
+  → permission denied on mounted volume
+
+Check:
+  kubectl describe pod <pod-name>
+  kubectl get events -n <namespace>
+
+Fix:
+  → fix command/entrypoint in yaml
+  → fix volume mount paths
+  → create missing configmap or secret
+  → fix file permissions on volume
+
+
+6. ERROR
+──────────────────────────────────────────────────────────
+
+Reason:
+  → container exited with non-zero code
+  → application threw unhandled exception
+  → script inside container failed
+
+Check:
+  kubectl logs <pod-name>
+  kubectl logs <pod-name> --previous
+
+Fix:
+  → check exit code in describe output
+  → fix application error
+
+
+7. TERMINATING (stuck)
+──────────────────────────────────────────────────────────
+
+Reason:
+  → pod stuck in terminating state
+  → finalizer blocking deletion
+  → node is unreachable
+
+Check:
+  kubectl describe pod <pod-name>
+  kubectl get nodes
+
+Fix:
+  → force delete the pod
+  kubectl delete pod <pod-name> --force --grace-period=0
+
+
+8. CONTAINERCREATING (stuck)
+──────────────────────────────────────────────────────────
+
+Reason:
+  → volume not attached yet
+  → image still being pulled
+  → configmap or secret missing
+  → network plugin issue (CNI)
+
+Check:
+  kubectl describe pod <pod-name>
+  kubectl get events -n <namespace>
+
+Fix:
+  → wait for volume to attach
+  → create missing configmap/secret
+  → check CNI plugin is running
+  kubectl get pods -n kube-system
+
+
+9. UNSCHEDULABLE
+──────────────────────────────────────────────────────────
+
+Reason:
+  → no node has enough resources
+  → node selector does not match any node
+  → pod has taint that no node tolerates
+  → affinity rules cannot be satisfied
+
+Check:
+  kubectl describe pod <pod-name>
+  look for: "0/3 nodes are available"
+
+Fix:
+  → scale up node group
+  → fix node selector labels
+  → add tolerations to pod spec
+  → relax affinity rules
+
+
+10. EVICTED
+──────────────────────────────────────────────────────────
+
+Reason:
+  → node ran out of disk space
+  → node ran out of memory
+  → kubelet evicted pod to free resources
+
+Check:
+  kubectl describe pod <pod-name>
+  kubectl describe node <node-name>
+
+Fix:
+  → clean up disk on node
+  → add more nodes
+  → set proper resource requests
+  → add PodDisruptionBudget
+
+
+QUICK REFERENCE
+──────────────────────────────────────────────────────────
+
+Error                  First Command to Run
+─────────────────────────────────────────────────────────
+Pending              → kubectl describe pod <pod>
+CrashLoopBackOff     → kubectl logs <pod> --previous
+OOMKilled            → kubectl describe pod <pod>
+ImagePullBackOff     → kubectl describe pod <pod>
+RunContainerError    → kubectl describe pod <pod>
+Terminating stuck    → kubectl delete pod --force
+ContainerCreating    → kubectl get events -n <ns>
+Unschedulable        → kubectl describe pod <pod>
+Evicted              → kubectl describe node <node>
+
+
+INTERVIEW ONE-LINER
+──────────────────────────────────────────────────────────
+
+"For any pod error my first two commands are
+ always kubectl describe pod and kubectl logs.
+ describe shows scheduling and event errors,
+ logs shows application errors. Between these
+ two commands I can solve 90% of pod issues." ✅
