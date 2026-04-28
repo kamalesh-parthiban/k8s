@@ -1,0 +1,81 @@
+Kubernetes NetworkPolicy - Ingress & Egress?
+
+What is NetworkPolicy?
+
+NetworkPolicy is a Kubernetes resource that controls traffic to and from your pods. Think of it like a firewall rule for your pods — you decide who can talk to whom inside the cluster.
+
+By default, all pods can communicate with each other freely. Once you apply a NetworkPolicy, only the traffic you explicitly allow will work.
+
+Ingress (Incoming Traffic)
+
+Ingress controls who can send traffic TO your pod.
+
+The question it answers: "Who is allowed to talk to me?"
+
+
+Egress (Outgoing Traffic)
+
+Egress controls where your pod is allowed to send traffic.
+
+The question it answers: "Who am I allowed to talk to?"
+
+Both Ingress and Egress Together:
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-full-policy
+spec:
+  podSelector:
+    matchLabels:
+      app: backend
+  policyTypes:
+  - Ingress
+  - Egress
+
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: frontend
+    ports:
+    - port: 8080
+
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: database
+    ports:
+    - port: 5432
+
+
+Other Useful Selectors
+namespaceSelector — allow traffic from a specific namespace:
+
+ingress:
+- from:
+  - namespaceSelector:
+      matchLabels:
+        name: production   # only pods from production namespace
+
+
+ipBlock — allow traffic from a specific IP range:
+
+egress:
+- to:
+  - ipBlock:
+      cidr: 10.0.0.0/24   # allow this IP range
+      except:
+      - 10.0.0.5/32        # but block this specific IP
+
+
+Key Differences at a Glance
+
+                Ingress                      Egress
+--------------------------------------------------------------
+Direction       Incoming traffic             Outgoing traffic
+Question        Who can talk to me?          Who can I talk to?
+Keyword         from                         to
+Use case        Protect your pod from        Prevent your pod from calling
+                unwanted access              unauthorized services
