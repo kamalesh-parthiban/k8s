@@ -1,0 +1,88 @@
+headless service communicate to other pod using dns name is it true?
+
+yes, Pods communicate directly using this DNS — not through a virtual IP. Even if the pod restarts and gets a new IP, the DNS name stays the same. This is why StatefulSet needs headless service — so slaves can always find the master by name, not by IP."
+
+Normal Service vs Headless Service
+
++----------------------+---------------------------+-----------------------------+
+| Feature              | Normal Service            | Headless Service            |
++----------------------+---------------------------+-----------------------------+
+| clusterIP            | Has IP (e.g. 10.96.0.1)   | None                        |
+| DNS resolves to      | Single virtual IP         | Direct pod IPs              |
+| Load balancing       | Yes (random)              | No (client chooses pod)     |
+| Use case             | Stateless apps            | StatefulSets / Databases    |
++----------------------+---------------------------+-----------------------------+
+
+How Headless DNS works:
+
+Normal Service DNS:
+mysql.default.svc.cluster.local
+        ↓
+    10.96.0.1  (single VIP — you don't know which pod)
+
+
+Headless Service DNS:
+mysql.default.svc.cluster.local
+        ↓
+    10.244.1.10  (pod-0 IP)
+    10.244.1.11  (pod-1 IP)
+    10.244.1.12  (pod-2 IP)
+
+Each pod ALSO gets its own DNS:	
+mysql-0.mysql.default.svc.cluster.local → 10.244.1.10
+mysql-1.mysql.default.svc.cluster.local → 10.244.1.11
+mysql-2.mysql.default.svc.cluster.local → 10.244.1.12
+
+
+Even if mysql-0 pod restarts and gets a new IP
+The DNS name mysql-0.mysql.default.svc.cluster.local still works
+It always resolves to wherever mysql-0 is running
+
+
+This is why StatefulSet needs Headless Service:
+
+Without headless:
+  slave → VIP → random pod (could hit another slave!) ❌
+
+With headless:
+  slave → mysql-0.mysql... → directly to master ✅
+
+
+Normal Service uses kube-proxy + iptables rules:
+
+Client Pod
+    │
+    │ calls mysql.default.svc.cluster.local
+    ▼
+DNS resolves to VIP → 10.96.0.1
+    │
+    ▼
+kube-proxy (runs on every node)
+    │
+    ▼
+iptables / IPVS rules
+    │
+    ├──→ Pod-0 (10.244.1.10)
+    ├──→ Pod-1 (10.244.1.11)
+    └──→ Pod-2 (10.244.1.12)
+
+Who does the actual routing?
+kube-proxy — runs as a DaemonSet on every node. It watches the Kubernetes API and writes iptables rules on each node.
+
+iptables rules (auto-created by kube-proxy):
+
+VIP 10.96.0.1 never actually exists on any machine
+It's a virtual IP — only lives in iptables rules
+kube-proxy intercepts and rewrites the packet destination
+
+How kube-proxy knows which pods are healthy:
+
+kube-proxy watches → Endpoints object
+                          │
+        ┌─────────────────┼──────────────────┐
+        ▼                 ▼                  ▼
+   10.244.1.10       10.244.1.11        10.244.1.12
+   (Ready ✅)        (Ready ✅)         (NotReady ❌)
+
+kube-proxy removes NotReady pods from iptables rules
+→ traffic never hits unhealthy pods
