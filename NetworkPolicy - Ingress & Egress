@@ -6,14 +6,14 @@ NetworkPolicy is a Kubernetes resource that controls traffic to and from your po
 
 By default, all pods can communicate with each other freely. Once you apply a NetworkPolicy, only the traffic you explicitly allow will work.
 
-Ingress (Incoming Traffic)
+Ingress (Incoming Traffic) - who can send traffic TO me(pod)
 
 Ingress controls who can send traffic TO your pod.
 
 The question it answers: "Who is allowed to talk to me?"
 
 
-Egress (Outgoing Traffic)
+Egress (Outgoing Traffic) - To whom I am allowed to send traffic
 
 Egress controls where your pod is allowed to send traffic.
 
