@@ -48,5 +48,20 @@ Kube-Proxy
 - Helps expose services to the network.
 
 Container Runtime
-- Containers are lightweight & portable, encapsulating the application and its dependencies.
-- Example: container runtime
+
+1) Responsible for executing & managing the containerized application on a host system.
+2) Container runtime handles tasks such as creating, starting, stopping & deleting containers.
+3) Popular container runtimes include Docker Engine, containerd, CRI-O.
+
+-------------------------------------------------
+Container (Docker Container)
+
+Container Image
+1) It is a lightweight & portable package that can run in any environment.
+2) It consists of multiple layers that can run within the container runtime environment
+   such as Docker or containerd. Images are built from a Dockerfile.
+3) It is lightweight & portable, so you can run in all environments.
+   It encapsulates the application & its dependency (app code, base image & dependencies)
+   and makes it easily transportable.
+
+----------------------------------------
