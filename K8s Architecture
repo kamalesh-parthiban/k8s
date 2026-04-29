@@ -1,0 +1,52 @@
+K8s Architecture
+
+Master Node
+
+1) Kube API Server
+- Manage & control the entire cluster.
+- It orchestrates the communication between control plane components such as:
+  kube-controller, kube-scheduler, kube-proxy & etcd key-value store.
+- Using kubectl CLI tool, we can interact with kube-apiserver.
+
+Controller Objects (apps/v1)
+- Pod, PVC, PV, CM, Secret, SA
+- Deployment, DaemonSet
+
+2) Kube Scheduler
+- It is a component of the K8s control plane that is responsible for making decisions
+  about where to place newly created Pods within the cluster.
+- Ensures the workloads are distributed across nodes.
+
+3) Kube Controller
+Controllers:
+1. Deployment Controller
+2. StatefulSet Controller
+3. Job Controller
+4. Service Controller
+5. Ingress Controller
+6. Namespace Controller
+7. DaemonSet Controller
+8. Persistent Volume Controller
+
+4) ETCD
+- It is a key-value store, open-source database.
+- It maintains the complete configuration and state of the K8s cluster
+  (like number of nodes, pods).
+- Stores hardware configuration info.
+
+----------------------------------------
+
+Worker Node
+
+Kubelet
+- Runs on every node in a cluster.
+- Responsible for managing containers on the node and ensuring they run in a healthy state.
+
+Kube-Proxy
+- Network proxy & load balancer that runs on each node.
+- Responsible for maintaining network rules on nodes.
+- Helps expose services to the network.
+
+Container Runtime
+- Containers are lightweight & portable, encapsulating the application and its dependencies.
+- Example: container runtime
