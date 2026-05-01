@@ -156,6 +156,11 @@ Step 8 — Verify
 # Check release
 helm list -n myapp
 
+[root@kamalesh ~]# helm list -n myapp
+NAME    NAMESPACE       REVISION        UPDATED                                 STATUS          CHART           APP VERSION
+rahu    myapp           1               2026-05-01 23:31:21.717090488 +0530 IST deployed        myapp-0.1.0     1.0.0
+
+
 # Check pods
 kubectl get pods -n myapp
 
