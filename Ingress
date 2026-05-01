@@ -1,3 +1,6 @@
+Ingress is a Kubernetes resource that manages external HTTP/HTTPS traffic routing into your cluster services.
+
+HTTP Ingress
 # ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -27,6 +30,32 @@ spec:
 
 Ingress (defines routing rules):
 . Ingress Resource — routing rules (you write this)
+
+HTTPS Ingress
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myapp-ingress
+  namespace: myapp
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"   # Force HTTP → HTTPS
+spec:
+  tls:
+    - hosts:
+        - myapp.example.com          # Your domain
+      secretName: myapp-tls-secret   # TLS(SSL) certificate secret
+  rules:
+    - host: myapp.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myapp-service
+                port:
+                  number: 80
 --------------------------------------------------------------------------------------------
 we need to expose ingress right?
 
