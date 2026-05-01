@@ -30,9 +30,9 @@ spec:
 
 Ingress (defines routing rules):
 . Ingress Resource — routing rules (you write this)
-
+----------------------------------------------------------------------------------
 HTTPS Ingress
-
+-------------
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
