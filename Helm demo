@@ -210,6 +210,11 @@ helm       repo        add           bitnami             https://charts.bitnami.
 Helm      Repository   Action       Local Alias                 Remote URL
 Tool      Command     (register)   (your choice)            (where charts live)
 
+[root@kamalesh ~]# helm repo list
+NAME    URL
+bitnami https://charts.bitnami.com/bitnami
+
+
 # Update repo
 helm repo update
 
