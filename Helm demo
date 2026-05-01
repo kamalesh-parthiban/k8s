@@ -1,0 +1,264 @@
+Step 1 — Install Helm
+
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+✅ Verify Installation
+
+helm version
+
+Step 1 — Create Your Own Helm Chart
+
+# Create helm chart scaffold
+helm create myapp   -- any name
+
+# See what got created
+ls -la myapp/
+
+✅ Expected structure:
+
+myapp/
+├── Chart.yaml          # Chart metadata (name, version, description)
+├── values.yaml         # Default configuration values
+├── charts/             # Dependency charts (empty for now)
+└── templates/          # Kubernetes YAML templates
+    ├── deployment.yaml
+    ├── service.yaml
+    ├── ingress.yaml
+    ├── hpa.yaml
+    ├── serviceaccount.yaml
+    ├── NOTES.txt
+    └── _helpers.tpl
+
+Step 2 — Update Chart.yaml
+
+cat > myapp/Chart.yaml <<EOF
+apiVersion: v2
+name: myapp
+description: My First Custom Helm Chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+EOF
+
+Step 3 — Update values.yaml
+
+cat > myapp/values.yaml <<EOF
+replicaCount: 2
+
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: LoadBalancer
+  port: 80
+
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "250m"
+    memory: "256Mi"
+
+namespace: myapp
+EOF
+
+Step 4 — Update Deployment Template
+
+cat > myapp/templates/deployment.yaml <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-deployment
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Release.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
+EOF
+
+Step 5 — Update Service Template
+
+cat > myapp/templates/service.yaml <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-service
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: {{ .Release.Name }}
+  type: {{ .Values.service.type }}
+  ports:
+    - protocol: TCP
+      port: {{ .Values.service.port }}
+      targetPort: 80
+EOF
+
+Step 6 — Lint & Validate Your Chart
+
+# Check for errors in your chart
+helm lint myapp/
+
+# Dry run — see what kubernetes YAML will be generated
+helm template myapp-release myapp/ --namespace myapp
+
+just delete the unused templates. Your chart only needs:
+
+myapp/
+├── Chart.yaml          # Chart metadata (name, version, description)
+├── values.yaml         # Default configuration values
+├── charts/             # Dependency charts (empty for now)
+└── templates/          # Kubernetes YAML templates
+    ├── deployment.yaml
+    ├── service.yaml
+    └── _helpers.tpl
+
+Step 7 — Deploy Your Own Chart to EKS
+
+# Create namespace
+kubectl create namespace myapp
+
+# Install your custom chart
+helm install myapp-release myapp/ --namespace myapp
+
+Step 8 — Verify
+
+# Check release
+helm list -n myapp
+
+# Check pods
+kubectl get pods -n myapp
+
+# Get LoadBalancer URL
+kubectl get svc -n myapp
+
+🔄 Step 9 — Upgrade Your Chart
+Change something in values.yaml (e.g. replicas to 3) then:
+
+helm upgrade myapp-release myapp/ --namespace myapp
+---
+Sure! Let's uninstall cleanly 👇
+
+🧹 Uninstall Helm Release
+
+helm uninstall myapp-release -n myapp
+
+🗑️ Delete Namespace
+
+kubectl delete namespace myapp
+
+✅ Verify Everything is Cleaned Up
+
+# Check no releases exist
+helm list -n myapp
+
+# Check namespace is gone
+kubectl get namespace myapp
+
+# Check no pods running
+kubectl get pods -n myapp
+---------------------------------------------------------------------
+🔵 What is Bitnami?
+Bitnami is a library of pre-packaged, ready-to-deploy applications and Helm charts maintained by VMware (now part of Broadcom).
+Think of it like an App Store for Kubernetes — instead of building everything from scratch, you use Bitnami's pre-built, production-ready charts.
+
+
+Add a Helm Chart Repository
+We'll deploy Nginx as a sample app using the official Bitnami repo:
+
+# Add Bitnami repo
+helm repo add bitnami https://charts.bitnami.com/bitnami
+
+# Update repo
+helm repo update
+
+Create a Namespace
+
+kubectl create namespace myapp
+
+Deploy Nginx via Helm
+
+helm install myapp-release bitnami/nginx \
+  --namespace myapp \
+  --set service.type=LoadBalancer \
+  --set replicaCount=2
+
+Flag                          Meaning
+---------------------------------------------------------
+myapp-release                 Your Helm release name
+bitnami/nginx                 Chart from Bitnami repo
+--namespace myapp             Deploy into myapp namespace
+service.type=LoadBalancer     AWS will create an ELB
+replicaCount=2                2 pods running
+
+Verify Deployment
+
+# Check Helm release
+helm list -n myapp
+
+# Check pods
+kubectl get pods -n myapp
+
+# Check service & get LoadBalancer URL
+kubectl get svc -n myapp
+
+Useful Helm Commands
+
+# See all deployed releases
+helm list -n myapp
+
+# Check history of a release
+helm history myapp-release -n myapp
+
+# Upgrade a release (e.g change replicas)
+helm upgrade myapp-release bitnami/nginx \
+  --namespace myapp \
+  --set replicaCount=3
+
+# Rollback to previous version
+helm rollback myapp-release 1 -n myapp
+
+🧹 Cleanup
+
+# Uninstall Helm release
+helm uninstall myapp-release -n myapp
+
+# Delete namespace
+kubectl delete namespace myapp
+
+🗺️ Full Flow
+
+Helm Repo (Bitnami)
+      │
+      ▼
+helm install → EKS Cluster → 2 Nginx Pods
+                    │
+                    ▼
+             AWS LoadBalancer
+                    │
+                    ▼
+            Browser → Nginx App ✅
