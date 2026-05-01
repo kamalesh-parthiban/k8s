@@ -145,6 +145,12 @@ kubectl create namespace myapp
 # Install your custom chart
 helm install myapp-release myapp/ --namespace myapp
 
+helm      install      myapp-release        myapp/          --namespace myapp
+ │           │               │                 │                    │
+ │           │               │                 │                    │
+Helm      Action        Release Name      Chart Location       Namespace
+Tool     (deploy)     (your choice)    (local folder path)   (in EKS cluster)
+
 Step 8 — Verify
 
 # Check release
