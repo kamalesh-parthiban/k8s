@@ -30,16 +30,61 @@ Full Flow:
 Access Modes (PV and PVC)
 Yes! AccessMode is written in both PV and PVC 👇
 
+Mode   | Node Restriction | Pod Restriction | All Pods on Same Node
+----------------------------------------------------------------------
+RWO    | 1 Node only      | No              | All can access
+ROX    | All Nodes        | No              | All can read
+RWX    | All Nodes        | No              | All can read & write
+RWOP   | Any Node         | Yes             | Only 1 pod
 
-        ┌───────────────────────┬──────────────────────────────┬────────────────────────────┐
-        │ Mode                  │ Meaning                      │ Use Case                   │
-        ├───────────────────────┼──────────────────────────────┼────────────────────────────┤
-        │ ReadWriteOnce (RWO)   │ One node read + write        │ MySQL, MongoDB             │
-        ├───────────────────────┼──────────────────────────────┼────────────────────────────┤
-        │ ReadOnlyMany (ROX)    │ Many nodes read only         │ Static files               │
-        ├───────────────────────┼──────────────────────────────┼────────────────────────────┤
-        │ ReadWriteMany (RWX)   │ Many nodes read + write      │ Shared storage (NFS)       │
-        └───────────────────────┴──────────────────────────────┴────────────────────────────┘
+RWO, ROX, RWX → Restriction is at NODE level
+                 NOT at Pod level
+
+✅ Simple Rule
+RWOP was introduced because RWO was not strict enough
+at the pod level — multiple pods on same node could still
+write causing data corruption issues 🚀
+
+ReadWriteOnce (RWO)
+───────────────────────────────────────
+┌─────────────────────┐
+│       NODE 1        │  ← Mounted ✅
+│  ┌────┐  ┌────┐    │
+│  │Pod1│  │Pod2│    │  ← All pods access ✅
+│  │ RW │  │ RW │    │
+│  └────┘  └────┘    │
+└─────────────────────┘
+
+┌─────────────────────┐
+│       NODE 2        │  ← Cannot mount ❌
+│  ┌────┐  ┌────┐    │
+│  │Pod3│  │Pod4│    │  ← No access ❌
+│  └────┘  └────┘    │
+└─────────────────────┘
+
+RWO — ReadWriteOnce
+─────────────────────────────
+1 Node mounts → Read & Write
+All pods on that node → ✅
+Pods on other nodes  → ❌
+
+ROX — ReadOnlyMany
+─────────────────────────────
+Many Nodes mount → Read Only
+All pods on all nodes → Read ✅
+All pods on all nodes → Write ❌
+
+RWX — ReadWriteMany
+─────────────────────────────
+Many Nodes mount → Read & Write
+All pods on all nodes → Read ✅
+All pods on all nodes → Write ✅
+
+RWOP — ReadWriteOncePod
+─────────────────────────────
+Only 1 Pod → Read & Write ✅
+All other pods → ❌
+(Pod level restriction not node)
 
 Reclaim Policies (PV lifecycle)
 Reclaim Policy is written in PV only 👇
