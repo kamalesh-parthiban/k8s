@@ -204,6 +204,12 @@ We'll deploy Nginx as a sample app using the official Bitnami repo:
 # Add Bitnami repo
 helm repo add bitnami https://charts.bitnami.com/bitnami
 
+helm       repo        add           bitnami             https://charts.bitnami.com/bitnami
+ │           │           │               │                           │
+ │           │           │               │                           │
+Helm      Repository   Action       Local Alias                 Remote URL
+Tool      Command     (register)   (your choice)            (where charts live)
+
 # Update repo
 helm repo update
 
