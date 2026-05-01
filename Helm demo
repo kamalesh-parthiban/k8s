@@ -9,7 +9,7 @@ helm version
 Step 1 — Create Your Own Helm Chart
 
 # Create helm chart scaffold
-helm create myapp   -- any name
+helm create myapp   -- any name  -- chart name
 
 # See what got created
 ls -la myapp/
