@@ -1,5 +1,7 @@
 Ingress is a Kubernetes resource that manages external HTTP/HTTPS traffic routing into your cluster services.
 
+Ingress Controller nothing but pod that should be created to route the traffic and we can define rules in Ingress resource.
+
 HTTP Ingress
 # ingress.yaml
 apiVersion: networking.k8s.io/v1
