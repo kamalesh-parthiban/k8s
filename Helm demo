@@ -261,6 +261,16 @@ helm upgrade myapp-release bitnami/nginx \
   --namespace myapp \
   --set replicaCount=3
 
+How to See Revision History
+
+helm history myapp-release -n myapp
+
+REVISION  STATUS      CHART         DESCRIPTION
+1         superseded  myapp-0.1.0   Install complete
+2         superseded  myapp-0.1.0   Upgrade complete
+3         failed      myapp-0.1.0   Upgrade failed
+4         deployed    myapp-0.1.0   Rollback to 1
+
 # Rollback to previous version
 helm rollback myapp-release 1 -n myapp
 
