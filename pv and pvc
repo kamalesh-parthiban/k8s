@@ -27,7 +27,8 @@ Full Flow:
 5. Pod reads/writes to actual storage
 
 
-Access Modes (PVC)
+Access Modes (PV and PVC)
+Yes! AccessMode is written in both PV and PVC 👇
 
 
         ┌───────────────────────┬──────────────────────────────┬────────────────────────────┐
@@ -41,6 +42,7 @@ Access Modes (PVC)
         └───────────────────────┴──────────────────────────────┴────────────────────────────┘
 
 Reclaim Policies (PV lifecycle)
+Reclaim Policy is written in PV only 👇
 
         ┌───────────────┬──────────────────────────────────────────────────────┐
         │ Policy        │ What happens to PV                             
