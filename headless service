@@ -13,6 +13,15 @@ Normal Service vs Headless Service
 | Use case             | Stateless apps            | StatefulSets / Databases    |
 +----------------------+---------------------------+-----------------------------+
 
+Types of Services Summary
+
+Service Type   | ClusterIP      | Access               | Use Case
+---------------------------------------------------------------------------
+ClusterIP      | Auto assigned  | Internal only        | Default internal service
+NodePort       | Auto assigned  | External via Node IP | Dev/testing
+LoadBalancer   | Auto assigned  | External via ELB     | Production
+Headless       | None           | Direct pod IP        | Stateful apps, DBs
+
 How Headless DNS works:
 
 Normal Service DNS:
