@@ -1,0 +1,157 @@
+HPA and VPA in K8S?
+
+HPA adds more pods when CPU/memory is high — scales out horizontally with zero downtime, needs Metrics Server to read pod metrics.
+VPA resizes CPU/memory of existing pods by killing and recreating them — causes brief downtime unless multiple replicas plus PodDisruptionBudget are used to restart one by one.
+
+Timeline with 4 pods + PDB:
+
+Time 0:  Pod1✅ Pod2✅ Pod3✅ Pod4✅  (all serving)
+        ↓
+Time 1:  Pod1❌ Pod2✅ Pod3✅ Pod4✅  (Pod1 restarting)
+        ↓
+Time 2:  Pod1✅ Pod2✅ Pod3✅ Pod4✅  (Pod1 back up)
+        ↓
+Time 3:  Pod1✅ Pod2❌ Pod3✅ Pod4✅  (Pod2 restarting)
+        ↓
+Time 4:  Pod1✅ Pod2✅ Pod3✅ Pod4✅  (Pod2 back up)
+        ↓
+...continues until all 4 updated
+        ↓
+Zero downtime ✅
+
+--
+Without PDB:
+  VPA might kill ALL 4 pods at once ❌
+  Complete outage ❌
+
+With PDB:
+  VPA respects minAvailable
+  Restarts one by one ✅
+---
+If you have 4 pods VPA restarts one by one — combined with PodDisruptionBudget you can achieve near zero downtime!
+
+Full setup for zero downtime VPA:
+
+# 1. Deployment with 4 replicas
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+spec:
+  replicas: 4            # ← 4 pods
+  template:
+    spec:
+      containers:
+        - name: my-app
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+---
+# 2. VPA
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: my-vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app
+  updatePolicy:
+    updateMode: "Auto"   # ← restarts pods
+---
+# 3. PDB — ensures one by one
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: my-pdb
+spec:
+  minAvailable: 3        # ← always 3 running
+  selector:
+    matchLabels:
+      app: my-app
+
+--------------------------
+
+HPA
+
+Step 1 — Install Metrics Server:
+
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# For EKS — add insecure tls flag
+kubectl patch deployment metrics-server \
+  -n kube-system \
+  --type json \
+  -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+
+# Verify
+kubectl get pods -n kube-system | grep metrics
+kubectl top nodes
+kubectl top pods
+
+Step 2 — Deployment:
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: my-app
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "250m"        # ← HPA needs requests defined
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+Step 4 — HPA:
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: my-app-hpa
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: my-app              # ← must match deployment name
+  minReplicas: 2              # ← minimum pods always running
+  maxReplicas: 10             # ← maximum pods allowed
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50   # ← scale when CPU > 50%
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70   # ← scale when memory > 70%
+
+kubectl get hpa
+# NAME          TARGETS          MINPODS   MAXPODS   REPLICAS
+# my-app-hpa   15%/50%          2         10        2
+#              ↑ actual CPU ✅
+
+
