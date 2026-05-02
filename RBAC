@@ -19,6 +19,12 @@ SA (Service Account)
 - Every namespace in Kubernetes has a default Service Account named "default".
 
 - We can attach a Service Account (SA) to RBAC.
+
+kubectl get sa --all-namespaces
+
+kubectl get sa -n default
+
+kubectl get pod <pod-name> -o yaml | grep serviceAccountName
 -----------------------------------------------------------------
 Step 1: Create a ServiceAccount
 
