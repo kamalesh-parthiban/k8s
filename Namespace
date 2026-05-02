@@ -1,0 +1,1 @@
+Namespace is a way to divide one Kubernetes cluster into multiple virtual clusters — so different teams, applications, or environments (dev/staging/prod) can share the same cluster without interfering with each other.
