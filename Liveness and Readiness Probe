@@ -1,0 +1,100 @@
+═══════════════════════════════════════════════════════════
+                    PROBES IN KUBERNETES
+═══════════════════════════════════════════════════════════
+
+Probes - It is used to monitor the container
+
+───────────────────────────────────────────
+TYPES OF PROBES
+───────────────────────────────────────────
+1. Liveness Probe
+2. Readiness Probe
+
+Under each probe 3 types of health check can be performed.
+
+───────────────────────────────────────────
+TYPES OF HEALTH CHECKS
+───────────────────────────────────────────
+1. httpGet
+2. tcpSocket
+3. exec
+
+httpGet   : Should return a successful HTTP response code
+tcpSocket : The port connectivity should be successful
+exec      : The command should return a 0 exit value
+
+───────────────────────────────────────────
+LIVENESS PROBE + READINESS PROBE (httpGet)
+───────────────────────────────────────────
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ng-pod
+spec:
+  containers:
+  - name: ng-container
+    image: nginx:latest
+    ports:
+      containerPort: 80
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 3
+      periodSeconds: 3
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 3
+      periodSeconds: 3
+
+───────────────────────────────────────────
+EXEC PROBE
+───────────────────────────────────────────
+exec:
+  command:
+    - cat
+    - /tmp/healthy
+  initialDelaySeconds: 5   → To start initial delay 5 seconds
+  periodSeconds: 5          → Every 5 sec check probe
+
+───────────────────────────────────────────
+TCP SOCKET PROBE
+───────────────────────────────────────────
+tcpSocket:
+  port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+───────────────────────────────────────────
+LIVENESS PROBE
+───────────────────────────────────────────
+Liveness Probe is used to determine if a container
+is running and healthy.
+
+If liveness probe fails,
+It will try to restart and recover it.
+
+───────────────────────────────────────────
+READINESS PROBE
+───────────────────────────────────────────
+Readiness Probe is used to determine if a container
+is ready to accept traffic.
+
+If readiness probe fails,
+It will remove the container IP from the service endpoints
+and won't receive any traffic until the probes get success.
+
+───────────────────────────────────────────
+USEFUL COMMANDS
+───────────────────────────────────────────
+kubectl get ep
+kubectl get endpoints
+
+───────────────────────────────────────────
+NOTES
+───────────────────────────────────────────
+Core-DNS  → kube-system namespace
+
+═══════════════════════════════════════════════════════════
