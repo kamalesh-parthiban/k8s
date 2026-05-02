@@ -1,0 +1,59 @@
+DAEMONSET
+═══════════════════════════════════════════
+
+=> In K8s, The DaemonSet ensures that a copy
+   of a specific pod runs on each node in the
+   cluster.
+
+=> It automatically add or remove pods as
+   node are added or removed from the cluster.
+
+=> DS can be configured to run only on
+   particular node using node affinity rules.
+
+───────────────────────────────────────────
+
+REAL WORLD USE CASES
+═══════════════════════════════════════════
+
+Log collection    → Fluentd runs on every node
+Monitoring        → Prometheus node exporter
+Security scanning → Falco runs on every node
+Network plugin    → Calico, Weave on every node
+
+───────────────────────────────────────────
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: nginx-daemonset
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:latest
+          ports:
+            - containerPort: 80
+      restartPolicy: Always   # Default for DaemonSet
+
+───────────────────────────────────────────
+
+DAEMONSET vs DEPLOYMENT
+═══════════════════════════════════════════
+
+DaemonSet  → 1 pod per node automatically
+           → No replica count needed
+           → Used for system level tasks
+           → Runs on ALL nodes
+
+Deployment → You define replica count
+           → Pods can run on any node
+           → Used for application workloads
+           → Rolling update & Rollback ✅
