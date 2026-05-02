@@ -81,6 +81,20 @@ A sidecar that transforms or converts output of main container into a standard f
 
 4. Ambassador Container
 
++--------------------------------------------------+
+|                     Pod                          |
+|--------------------------------------------------|
+|  Main Container        Ambassador Container      |
+|                                                  |
+|  (App)                 (Proxy / Sidecar)         |
+|     |                        |                   |
+|     | ---- Request --------->|                   |
+|     |                        | ---- Connect ----+------> External DB
+|     |                        |                  |       (Database)
+|     |                        | <---- Response --+<------
+|     | <---- Response --------|                   |
++--------------------------------------------------+
+
 A sidecar that acts as a proxy between main container and outside world.
 
 How it Works
