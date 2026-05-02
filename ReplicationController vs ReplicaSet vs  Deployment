@@ -48,11 +48,11 @@ Rollback → ReplicaSet v1 scales back up ✅
 Rollback Commands
 
 # Rollback to previous version immediately
-kubectl rollout undo deployment/frontend
+kubectl rollout undo deployment frontend  -- deployment name
 
 # See rollout history
-kubectl rollout history deployment/frontend
+kubectl rollout history deployment frontend
 
 # Rollback to specific version
-kubectl rollout undo deployment/frontend --to-revision=2
+kubectl rollout undo deployment frontend --to-revision=2
 
