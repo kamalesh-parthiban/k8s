@@ -49,6 +49,20 @@ Monitoring        --   Sidecar sends metrics to Prometheus
 
 3. Adapter Container
 
++--------------------------------------------------+
+|                Application Pod                    |
+|--------------------------------------------------|
+|  Python App   Ruby App   Go App   Java App        |
+|      |           |         |         |            |
+|      ---------------------------------           |
+|               Adapter Container                  |
+|            (Normalize Logs)                      |
++--------------------------------------------------+
+                     |
+                     v
+          Central Logging System
+       (ELK / CloudWatch / etc)
+
 Every app writes logs in different formats!
 
 Python App logs →  2026-04-07 ERROR NullPointerException
