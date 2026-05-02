@@ -1,0 +1,102 @@
+RBAC - Role and RoleBinding same for clusterRole and ClusterRoleBinding
+-----------------------------------------------------------------
+1) Using Role & RoleBinding:
+   We can restrict the resources for a specific namespace (ns) in the cluster.
+   If we try to access resources in another namespace, it will throw an error.
+
+2) Using ClusterRole & ClusterRoleBinding:
+   We can restrict the resources for all the namespaces (ns) in a cluster.
+
+# kubectl create token default -n test --duration=8760h
+--------------------------------------------------------------------
+SA (Service Account)
+
+- Service Account is used to authenticate and authorize communication 
+  between different parts of your application and the Kubernetes API Server.
+
+- Each pod in Kubernetes is associated with a Service Account (SA).
+
+- Every namespace in Kubernetes has a default Service Account named "default".
+
+- We can attach a Service Account (SA) to RBAC.
+-----------------------------------------------------------------
+Step 1: Create a ServiceAccount
+
+kubectl create serviceaccount john-dev -n dev
+
+Step 2: Create Role & RoleBinding
+
+# role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dev-role
+  namespace: dev
+rules:
+- apiGroups: ["", "apps"]
+  resources: ["pods", "deployments", "services", "logs"]
+  verbs: ["get", "list", "watch", "create", "update", "delete"]
+
+# rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dev-rolebinding
+  namespace: dev
+subjects:
+- kind: ServiceAccount
+  name: john-dev
+  namespace: dev
+roleRef:
+  kind: Role
+  name: dev-role
+  apiGroup: rbac.authorization.k8s.io
+
+kubectl apply -f role.yaml
+kubectl apply -f rolebinding.yaml
+
+
+Step 3: Get the Token
+
+Create tkn
+
+kubectl create token john-dev -n dev --duration=8760h
+
+
+extract and verify the token:
+
+#TOKEN=$(kubectl get secret john-dev-token -n dev -o jsonpath='{.data.token}' | base64 --decode)
+
+#echo $TOKEN
+
+
+Step 4: Get Cluster Info
+
+# Get cluster API server URL
+CLUSTER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+
+# Get cluster CA certificate
+CA=$(kubectl get secret john-dev-token -n dev -o jsonpath='{.data.ca\.crt}')
+
+Step 5: Build the Kubeconfig File
+
+cat <<EOF > john-dev-kubeconfig.yaml
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    certificate-authority-data: ${CA}
+    server: ${CLUSTER}
+  name: my-cluster
+contexts:
+- context:
+    cluster: my-cluster
+    namespace: dev          # locked to dev namespace
+    user: john-dev
+  name: john-dev-context
+current-context: john-dev-context
+users:
+- name: john-dev
+  user:
+    token: ${TOKEN}
+EOF
