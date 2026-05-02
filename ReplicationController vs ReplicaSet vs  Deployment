@@ -10,6 +10,47 @@ Difference Between All Three
 | Pause/Resume update | No                    | No          | Yes             |
 | Still recommended   | No                    | Rarely      | Yes             |
 
+DEPLOYMENT
+═══════════════════════════════════════════
+
+=> Objective is to maintain desired no. of pods
+
+=> Deployment is a higher-level abstraction
+   built on top of ReplicaSets and additional
+   features.
+
+=> Rolling update & Rollback is possible in
+   Deployment without Downtime. (How?)
+=> It will delete one by one
+
+───────────────────────────────────────────
+
+REPLICASET (RS)
+═══════════════════════════════════════════
+
+=> RS is a lower-level abstraction and
+   objective is to maintain the desired
+   number of pods.
+
+=> They do it provide advanced feature
+   like rolling update & rollback.
+
+───────────────────────────────────────────
+
+DEPLOYMENT vs REPLICASET
+═══════════════════════════════════════════
+
+Deployment  → Higher level abstraction
+            → Built on top of ReplicaSet
+            → Rolling update  ✅
+            → Rollback        ✅
+            → Zero Downtime   ✅
+
+ReplicaSet  → Lower level abstraction
+            → Maintains desired pod count
+            → Rolling update  ❌
+            → Rollback        ❌
+
 Deployment
 
 what is Rolling update and rollback
