@@ -1,0 +1,72 @@
+CRONJOB
+═══════════════════════════════════════════
+
+CronJob is a Kubernetes controller that runs
+Jobs on a scheduled time automatically.
+Like a cron in Linux.
+
+Job     → Run once and complete
+CronJob → Run repeatedly on schedule
+
+───────────────────────────────────────────
+
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: example-cronjob
+spec:
+  schedule: "0 0 * * *"      # Every day at 12AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: example-container
+              image: image:tag
+          restartPolicy: OnFailure
+
+───────────────────────────────────────────
+
+CRON SCHEDULE SYNTAX
+═══════════════════════════════════════════
+
+"0 0 * * *"
+  │ │ │ │ │
+  │ │ │ │ └── Day of Week (0-7, 0=Sunday)
+  │ │ │ └──── Month (1-12)
+  │ │ └────── Day of Month (1-31)
+  │ └──────── Hour (0-23)
+  └────────── Minute (0-59)
+
+───────────────────────────────────────────
+
+COMMON SCHEDULES
+═══════════════════════════════════════════
+
+"0 0 * * *"     → Every day at 12AM
+"*/5 * * * *"   → Every 5 minutes
+"0 9 * * 1"     → Every Monday at 9AM
+"0 0 1 * *"     → Every 1st of month
+"0 9-17 * * *"  → Every hour 9AM to 5PM
+
+───────────────────────────────────────────
+
+REAL WORLD USE CASES
+═══════════════════════════════════════════
+
+Database backup      → Every night at 12AM
+Send email reports   → Every Monday 9AM
+Clean up old logs    → Every day at 6AM
+Generate invoices    → Every 1st of month
+Health check report  → Every 5 minutes
+
+───────────────────────────────────────────
+
+JOB vs CRONJOB
+═══════════════════════════════════════════
+
+Job     → Run Once    → No Schedule  → One time task
+CronJob → Run Forever → Has Schedule → Recurring task
+
+NOTE: CronJob internally creates a
+      Job every time it runs!
