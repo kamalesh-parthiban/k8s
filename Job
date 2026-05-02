@@ -1,0 +1,26 @@
+JOB
+═══════════════════════════════════════════
+
+Job is a Controller
+
+In K8s, a "Job" represents a task or set of
+tasks that run to completion. A Job is designed
+for short-lived. It is used to perform batch
+processing (series of tasks)
+
+───────────────────────────────────────────
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: example-job
+spec:
+  completions: 1      # No. of pods that should complete successfully
+  parallelism: 1      # No. of pods to run in parallel
+  template:
+    metadata:
+      name: example-pod
+    spec:
+      containers:
+        - name: example-container
+          image: image:tag
