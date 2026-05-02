@@ -10,9 +10,21 @@ EKS Created
     ├── Cluster Autoscaler ❌ NOT installed
     ├── Karpenter          ❌ NOT installed
     └── HPA                ❌ NOT installed
-
+------------------------------------------------------
+🔵 Full Picture
+-----------------------------------------------------
+Helm Install      → Karpenter controller running
+      +
+NodePool          → What instances to launch
+      +                (type, size, limits)
+EC2NodeClass      → Where to launch
+                     (subnet, security group, AMI)
+      │
+      ▼
+Pod Pending → Karpenter scales node ✅
+---------------------------------------------------------------------------------------------------------
 🔵 AWS Console View
-
+---------------------------------
 Node Group Scaling Configuration
 ──────────────────────────────────
 Minimum size    →  2  nodes
