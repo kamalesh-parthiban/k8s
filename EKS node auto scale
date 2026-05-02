@@ -1,0 +1,425 @@
+What IS Default in EKS
+
+EKS Created
+    │
+    ├── Node Group        ✅ Created
+    ├── ASG               ✅ Created automatically
+    ├── Min/Max/Desired   ✅ Set by you
+    ├── EC2 Health check  ✅ Default
+    │
+    ├── Cluster Autoscaler ❌ NOT installed
+    ├── Karpenter          ❌ NOT installed
+    └── HPA                ❌ NOT installed
+
+🔵 AWS Console View
+
+Node Group Scaling Configuration
+──────────────────────────────────
+Minimum size    →  2  nodes
+Desired size    →  3  nodes
+Maximum size    →  6  nodes
+
+But it does not increase node to max if more pod is pending we need to install Karpenter
+
+Helm installs Karpenter     → Just installs the tool ✅
+NodePool + EC2NodeClass     → Tells Karpenter WHAT and HOW to scale ✅
+
+Without NodePool            → Karpenter sits idle ❌
+                            → No nodes added ever ❌
+
+KARPENTER
+═══════════════════════════════════════════
+
+WHY KARPENTER OVER CLUSTER AUTOSCALER
+═══════════════════════════════════════════
+
+Cluster Autoscaler          Karpenter
+──────────────────          ──────────────────
+Slow (2-3 minutes)    vs    Fast (seconds)
+Works with ASG        vs    Directly EC2
+Limited instance type vs    Any instance type
+Old approach          vs    Modern approach
+Complex config        vs    Simple config
+
+───────────────────────────────────────────
+
+STEP 1 - SET ENVIRONMENT VARIABLES
+═══════════════════════════════════════════
+
+export CLUSTER_NAME=my-cluster
+export AWS_REGION=ap-south-1
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+  --query Account --output text)
+
+───────────────────────────────────────────
+
+STEP 2 - CREATE IAM POLICY
+═══════════════════════════════════════════
+
+cat > karpenter-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "ec2:CreateLaunchTemplate",
+        "ec2:CreateFleet",
+        "ec2:RunInstances",
+        "ec2:CreateTags",
+        "ec2:TerminateInstances",
+        "ec2:DescribeLaunchTemplates",
+        "ec2:DescribeInstances",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeInstanceTypes",
+        "ec2:DescribeAvailabilityZones",
+        "iam:PassRole",
+        "ssm:GetParameter"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+
+aws iam create-policy \
+  --policy-name KarpenterPolicy \
+  --policy-document file://karpenter-policy.json
+
+───────────────────────────────────────────
+
+STEP 3 - INSTALL KARPENTER CRDs
+═══════════════════════════════════════════
+
+kubectl apply -f https://raw.githubusercontent.com/aws/karpenter/main/pkg/apis/crds/karpenter.sh_nodepools.yaml
+
+kubectl apply -f https://raw.githubusercontent.com/aws/karpenter/main/pkg/apis/crds/karpenter.k8s.aws_ec2nodeclasses.yaml
+
+───────────────────────────────────────────
+
+STEP 4 - DEPLOY KARPENTER
+═══════════════════════════════════════════
+
+cat > karpenter-deployment.yaml <<EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: karpenter
+  namespace: karpenter
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: karpenter
+  template:
+    metadata:
+      labels:
+        app: karpenter
+    spec:
+      containers:
+        - name: controller
+          image: public.ecr.aws/karpenter/controller:v0.33.0
+          env:
+            - name: CLUSTER_NAME
+              value: my-cluster
+            - name: AWS_REGION
+              value: ap-south-1
+          resources:
+            requests:
+              cpu: "1"
+              memory: "1Gi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+EOF
+
+kubectl create namespace karpenter
+kubectl apply -f karpenter-deployment.yaml
+
+───────────────────────────────────────────
+
+STEP 5 - CREATE NODEPOOL
+═══════════════════════════════════════════
+
+cat > nodepool.yaml <<EOF
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    spec:
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["t3.medium", "t3.large", "t3.xlarge"]
+      nodeClassRef:
+        name: default
+  limits:
+    cpu: 100                     # Max total CPU across all nodes
+    memory: 100Gi                # Max total Memory
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    consolidateAfter: 30s        # Remove idle nodes after 30s
+EOF
+
+kubectl apply -f nodepool.yaml
+
+───────────────────────────────────────────
+
+STEP 6 - CREATE EC2NODECLASS
+═══════════════════════════════════════════
+
+cat > nodeclass.yaml <<EOF
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: AL2
+  role: KarpenterNodeRole
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: my-cluster
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: my-cluster
+EOF
+
+kubectl apply -f nodeclass.yaml
+
+───────────────────────────────────────────
+
+STEP 7 - VERIFY KARPENTER
+═══════════════════════════════════════════
+
+# Check karpenter pods
+kubectl get pods -n karpenter
+
+# Check nodepool
+kubectl get nodepool
+
+# Check logs
+kubectl logs -n karpenter \
+  -l app=karpenter -f
+
+───────────────────────────────────────────
+
+HOW KARPENTER WORKS
+═══════════════════════════════════════════
+
+Pod Pending (no resources)
+        │
+        ▼
+Karpenter detects pending pod
+        │
+        ▼
+Checks pod requirements
+(CPU, Memory, Node selector)
+        │
+        ▼
+Launches right EC2 instance
+directly in seconds ✅
+        │
+        ▼
+Pod scheduled ✅
+
+Load drops
+        │
+        ▼
+Karpenter consolidates nodes
+Terminates idle nodes ✅
+Cost saved ✅
+
+───────────────────────────────────────────
+
+SUMMARY
+═══════════════════════════════════════════
+
+Step 1 → Set env variables
+Step 2 → Create IAM role
+Step 3 → Install CRDs
+Step 4 → Deploy Karpenter
+Step 5 → Create NodePool
+Step 6 → Create EC2NodeClass
+Step 7 → Verify ✅
+
+NOTE:
+- Karpenter = Best choice for Production
+- Faster, smarter, cheaper than Cluster Autoscaler
+- Uses NodePool instead of ASG
+- Always set CPU and Memory limits in NodePool
+--------------------------------------------------
+KARPENTER INSTALLATION - HELM (EASIEST WAY)
+═══════════════════════════════════════════
+
+WHY HELM OVER KUBECTL APPLY
+═══════════════════════════════════════════
+
+kubectl apply (YAML)        Helm
+──────────────────          ──────────────────
+7 steps manually      vs    3 steps
+Create each YAML      vs    One command
+Hard to upgrade       vs    Easy upgrade
+Hard to uninstall     vs    One command
+Complex               vs    Simple
+
+───────────────────────────────────────────
+
+STEP 1 - ADD KARPENTER HELM REPO
+═══════════════════════════════════════════
+
+helm repo add karpenter \
+  https://charts.karpenter.sh
+
+helm repo update
+
+───────────────────────────────────────────
+
+STEP 2 - INSTALL KARPENTER
+═══════════════════════════════════════════
+
+helm install karpenter karpenter/karpenter \
+  --namespace karpenter \
+  --create-namespace \
+  --set settings.clusterName=my-cluster \
+  --set settings.clusterEndpoint=$(aws eks describe-cluster \
+    --name my-cluster \
+    --query "cluster.endpoint" \
+    --output text) \
+  --set aws.defaultInstanceProfile=KarpenterNodeRole
+
+───────────────────────────────────────────
+
+STEP 3 - VERIFY
+═══════════════════════════════════════════
+
+kubectl get pods -n karpenter
+
+───────────────────────────────────────────
+
+UPGRADE KARPENTER
+═══════════════════════════════════════════
+
+helm upgrade karpenter karpenter/karpenter \
+  --namespace karpenter
+
+───────────────────────────────────────────
+
+UNINSTALL KARPENTER
+═══════════════════════════════════════════
+
+helm uninstall karpenter -n karpenter
+
+───────────────────────────────────────────
+
+COMPARISON - kubectl vs Helm vs eksctl
+═══════════════════════════════════════════
+
+kubectl YAML  → 7 Steps  → High Complexity   → Full Control
+Helm          → 3 Steps  → Medium Complexity → Good Control  ✅ Production
+eksctl        → 2 Steps  → Low Complexity    → Limited Control
+
+───────────────────────────────────────────
+
+SIMPLE RULE
+═══════════════════════════════════════════
+
+Learning    → kubectl apply  (understand internals)
+Production  → Helm           (easy manage, upgrade, rollback) ✅
+Quick setup → eksctl         (fastest way)
+
+───────────────────────────────────────────
+
+NODEPOOL - AFTER INSTALL
+═══════════════════════════════════════════
+
+cat > nodepool.yaml <<EOF
+apiVersion: karpenter.sh/v1beta1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    spec:
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["t3.medium", "t3.large", "t3.xlarge"]
+      nodeClassRef:
+        name: default
+  limits:
+    cpu: 100                     # Max total CPU across all nodes
+    memory: 100Gi                # Max total Memory
+  disruption:
+    consolidationPolicy: WhenUnderutilized
+    consolidateAfter: 30s        # Remove idle nodes after 30s
+EOF
+
+kubectl apply -f nodepool.yaml
+
+───────────────────────────────────────────
+
+EC2NODECLASS - AFTER INSTALL
+═══════════════════════════════════════════
+
+cat > nodeclass.yaml <<EOF
+apiVersion: karpenter.k8s.aws/v1beta1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiFamily: AL2
+  role: KarpenterNodeRole
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: my-cluster
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: my-cluster
+EOF
+
+kubectl apply -f nodeclass.yaml
+
+───────────────────────────────────────────
+
+VERIFY ALL
+═══════════════════════════════════════════
+
+# Check karpenter pods
+kubectl get pods -n karpenter
+
+# Check nodepool
+kubectl get nodepool
+
+# Check nodeclaim
+kubectl get nodeclaim
+
+# Check logs
+kubectl logs -n karpenter \
+  -l app.kubernetes.io/name=karpenter -f
+
+───────────────────────────────────────────
+
+NOTE
+═══════════════════════════════════════════
+
+- Helm is easiest and recommended for Production
+- After Helm install → Still need to create
+  NodePool and EC2NodeClass manually
+- NodePool replaces ASG in Karpenter
+- Always set CPU and Memory limits in NodePool
+- consolidateAfter → removes idle nodes to save cost
