@@ -1,0 +1,88 @@
+SERVICES
+═══════════════════════════════════════════
+
+1) ClusterIP (Used to expose Service internally)
+───────────────────────────────────────────────
+- TargetPort: is where the container is running
+- Port can be any free Port
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: CP-Service
+spec:
+  selector:
+    app: nginx
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+
+
+═══════════════════════════════════════════
+
+2) NodePort (30,000 to 32,767) (Used to expose Service externally)
+───────────────────────────────────────────────────────────────────
+- ok, using NodePort, we expose and we access
+  <NodeIP>:<NodePort> but pod in all the worker
+  Node. How the communication is happening.
+
+- When NodePort is created, ClusterIP will
+  also get created (that will take care of it)
+
+  http://<NODE-IP>:3007    <NodePort>
+
+  We can use any node-ip
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: NP-Service
+spec:
+  selector:
+    app: nginx
+  type: NodePort
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      nodePort: 32010
+
+
+═══════════════════════════════════════════
+
+3) ExternalName
+───────────────────────────────────────────────────────────────────
+(Used to map Service to an External DNS name.
+ It doesn't expose service externally but it allows
+ all pods within a cluster to resolve external DNS name)
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: External
+spec:
+  type: ExternalName
+  externalName: example.com
+
+
+═══════════════════════════════════════════
+
+4) LoadBalancer (Only Cloud)
+───────────────────────────────────────────────────────────────────
+=> Creates ClusterIP by default
+=> It may also create a NodePort service
+   if needed to expose service externally
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: load-balancer
+spec:
+  selector:
+    app: nginx
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
