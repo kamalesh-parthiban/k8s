@@ -56,7 +56,7 @@ exec:
   command:
     - cat
     - /tmp/healthy
-  initialDelaySeconds: 5   → To start initial delay 5 seconds
+  initialDelaySeconds: 5   → initial delay 5 seconds to start 
   periodSeconds: 5          → Every 5 sec check probe
 
 ───────────────────────────────────────────
