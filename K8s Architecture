@@ -38,11 +38,11 @@ Controllers:
 
 Worker Node
 
-Kubelet
+Kubelet    -- its just a binary not deploy or daemon
 - Runs on every node in a cluster.
 - Responsible for managing containers on the node and ensuring they run in a healthy state.
 
-Kube-Proxy
+Kube-Proxy       -- Daemonset
 - Network proxy & load balancer that runs on each node.
 - Responsible for maintaining network rules on nodes.
 - Helps expose services to the network.
