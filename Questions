@@ -1,3 +1,31 @@
+which Container Runtime runs on eks?
+
+Before Kubernetes 1.24:
+  Docker → default runtime ✅
+  dockershim → interface layer
+
+After Kubernetes 1.24:
+  dockershim removed ❌
+  containerd → default ✅
+  more lightweight
+  more efficient ✅
+
+# SSH into worker node
+ssh ec2-user@<node-ip>
+
+# Check container runtime
+systemctl status containerd
+# active (running) ✅
+
+# Check running containers
+crictl ps
+# shows all running containers ✅
+
+# Check images
+crictl images
+# shows pulled images ✅
+
+------------------------------------------------------
 we have 5 worker node and replica 5 each pod should place on all node?
 
 Short answer: Not guaranteed by default.
