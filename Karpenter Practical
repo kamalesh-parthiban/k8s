@@ -1,0 +1,718 @@
+================================================
+  KARPENTER INSTALLATION ON EKS — COMPLETE GUIDE
+  Cluster: my-eks-cluster | Region: us-east-2
+================================================
+
+PRE-REQUISITES
+───────────────
+- EKS cluster running
+- kubectl configured
+- AWS CLI configured
+- Helm installed
+
+================================================
+STEP 1 — Set Environment Variables
+================================================
+
+export CLUSTER_NAME=my-eks-cluster
+export AWS_REGION=us-east-2
+export AWS_ACCOUNT_ID=382458445256
+export KARPENTER_VERSION="1.12.0"
+export KARPENTER_NAMESPACE="kube-system"
+export AWS_PARTITION="aws"
+
+# verify
+echo $CLUSTER_NAME
+echo $AWS_REGION
+echo $AWS_ACCOUNT_ID
+echo $KARPENTER_VERSION
+
+================================================
+STEP 2 — Get OIDC ID
+================================================
+
+aws eks describe-cluster \
+  --name $CLUSTER_NAME \
+  --query "cluster.identity.oidc.issuer" \
+  --output text
+
+export OIDC_ID="D4A650D7A3E49034F41641D9D5444351"
+# replace with your actual OIDC ID from output
+
+================================================
+STEP 3 — Register OIDC Provider in IAM
+================================================
+
+# THIS IS CRITICAL — easy to miss!
+aws iam create-open-id-connect-provider \
+  --url "https://oidc.eks.us-east-2.amazonaws.com/id/${OIDC_ID}" \
+  --client-id-list "sts.amazonaws.com" \
+  --thumbprint-list "9e99a48a9960b14926bb7f3b02e22da2b0ab7280"
+
+# verify
+aws iam list-open-id-connect-providers
+
+================================================
+STEP 4 — Create Karpenter Controller IAM Role
+================================================
+
+# create trust policy file
+cat > karpenter-trust-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::382458445256:oidc-provider/oidc.eks.us-east-2.amazonaws.com/id/D4A650D7A3E49034F41641D9D5444351"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.eks.us-east-2.amazonaws.com/id/D4A650D7A3E49034F41641D9D5444351:sub": "system:serviceaccount:kube-system:karpenter",
+          "oidc.eks.us-east-2.amazonaws.com/id/D4A650D7A3E49034F41641D9D5444351:aud": "sts.amazonaws.com"
+        }
+      }
+    }
+  ]
+}
+EOF
+
+# create role
+aws iam create-role \
+  --role-name "my-eks-cluster-karpenter" \
+  --assume-role-policy-document file://karpenter-trust-policy.json \
+  --query "Role.Arn" \
+  --output text
+
+================================================
+STEP 5 — Create Karpenter Controller Policy
+================================================
+
+# NOTE: On Windows Git Bash — always use file://
+# never inline JSON — it breaks!
+
+cat > karpenter-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowScopedEC2InstanceAccessActions",
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:us-east-2::image/*",
+        "arn:aws:ec2:us-east-2::snapshot/*",
+        "arn:aws:ec2:us-east-2:382458445256:security-group/*",
+        "arn:aws:ec2:us-east-2:382458445256:subnet/*"
+      ],
+      "Action": ["ec2:RunInstances","ec2:CreateFleet"]
+    },
+    {
+      "Sid": "AllowScopedEC2LaunchTemplateActions",
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:us-east-2:382458445256:launch-template/*",
+      "Action": ["ec2:RunInstances","ec2:CreateFleet"]
+    },
+    {
+      "Sid": "AllowScopedEC2InstanceActionsWithTags",
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:us-east-2:382458445256:fleet/*",
+        "arn:aws:ec2:us-east-2:382458445256:instance/*",
+        "arn:aws:ec2:us-east-2:382458445256:volume/*",
+        "arn:aws:ec2:us-east-2:382458445256:network-interface/*",
+        "arn:aws:ec2:us-east-2:382458445256:launch-template/*",
+        "arn:aws:ec2:us-east-2:382458445256:spot-instances-request/*"
+      ],
+      "Action": [
+        "ec2:RunInstances",
+        "ec2:CreateFleet",
+        "ec2:CreateLaunchTemplate"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/kubernetes.io/cluster/my-eks-cluster": "owned"
+        },
+        "StringLike": {
+          "aws:RequestTag/karpenter.sh/nodepool": "*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowScopedResourceCreationTagging",
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:us-east-2:382458445256:fleet/*",
+        "arn:aws:ec2:us-east-2:382458445256:instance/*",
+        "arn:aws:ec2:us-east-2:382458445256:volume/*",
+        "arn:aws:ec2:us-east-2:382458445256:network-interface/*",
+        "arn:aws:ec2:us-east-2:382458445256:launch-template/*",
+        "arn:aws:ec2:us-east-2:382458445256:spot-instances-request/*"
+      ],
+      "Action": "ec2:CreateTags",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/kubernetes.io/cluster/my-eks-cluster": "owned",
+          "ec2:CreateAction": [
+            "RunInstances","CreateFleet","CreateLaunchTemplate"
+          ]
+        },
+        "StringLike": {
+          "aws:RequestTag/karpenter.sh/nodepool": "*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowScopedResourceTagging",
+      "Effect": "Allow",
+      "Resource": "arn:aws:ec2:us-east-2:382458445256:instance/*",
+      "Action": "ec2:CreateTags",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/kubernetes.io/cluster/my-eks-cluster": "owned"
+        },
+        "StringLike": {
+          "aws:ResourceTag/karpenter.sh/nodepool": "*"
+        },
+        "ForAllValues:StringEquals": {
+          "aws:TagKeys": ["karpenter.sh/nodeclaim","Name"]
+        }
+      }
+    },
+    {
+      "Sid": "AllowScopedDeletion",
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:ec2:us-east-2:382458445256:instance/*",
+        "arn:aws:ec2:us-east-2:382458445256:launch-template/*"
+      ],
+      "Action": [
+        "ec2:TerminateInstances",
+        "ec2:DeleteLaunchTemplate"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/kubernetes.io/cluster/my-eks-cluster": "owned"
+        },
+        "StringLike": {
+          "aws:ResourceTag/karpenter.sh/nodepool": "*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowRegionalReadActions",
+      "Effect": "Allow",
+      "Resource": "*",
+      "Action": [
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeImages",
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceTypeOfferings",
+        "ec2:DescribeInstanceTypes",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeLaunchTemplates",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSpotPriceHistory",
+        "ec2:DescribeSubnets"
+      ]
+    },
+    {
+      "Sid": "AllowSSMReadActions",
+      "Effect": "Allow",
+      "Resource": "arn:aws:ssm:us-east-2::parameter/aws/service/*",
+      "Action": "ssm:GetParameter"
+    },
+    {
+      "Sid": "AllowPricingReadActions",
+      "Effect": "Allow",
+      "Resource": "*",
+      "Action": "pricing:GetProducts"
+    },
+    {
+      "Sid": "AllowInterruptionQueueActions",
+      "Effect": "Allow",
+      "Resource": "arn:aws:sqs:us-east-2:382458445256:my-eks-cluster",
+      "Action": [
+        "sqs:DeleteMessage",
+        "sqs:GetQueueAttributes",
+        "sqs:GetQueueUrl",
+        "sqs:ReceiveMessage"
+      ]
+    },
+    {
+      "Sid": "AllowPassingInstanceRole",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::382458445256:role/KarpenterNodeRole-my-eks-cluster",
+      "Action": "iam:PassRole"
+    },
+    {
+      "Sid": "AllowScopedInstanceProfileCreationActions",
+      "Effect": "Allow",
+      "Resource": "*",
+      "Action": ["iam:CreateInstanceProfile"],
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestTag/kubernetes.io/cluster/my-eks-cluster": "owned"
+        },
+        "StringLike": {
+          "aws:RequestTag/karpenter.sh/nodepool": "*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowScopedInstanceProfileTagActions",
+      "Effect": "Allow",
+      "Resource": "*",
+      "Action": ["iam:TagInstanceProfile"],
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/kubernetes.io/cluster/my-eks-cluster": "owned",
+          "aws:RequestTag/kubernetes.io/cluster/my-eks-cluster": "owned"
+        },
+        "StringLike": {
+          "aws:ResourceTag/karpenter.sh/nodepool": "*",
+          "aws:RequestTag/karpenter.sh/nodepool": "*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowScopedInstanceProfileActions",
+      "Effect": "Allow",
+      "Resource": "*",
+      "Action": [
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:DeleteInstanceProfile"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/kubernetes.io/cluster/my-eks-cluster": "owned"
+        },
+        "StringLike": {
+          "aws:ResourceTag/karpenter.sh/nodepool": "*"
+        }
+      }
+    },
+    {
+      "Sid": "AllowInstanceProfileReadActions",
+      "Effect": "Allow",
+      "Resource": "*",
+      "Action": "iam:GetInstanceProfile"
+    },
+    {
+      "Sid": "AllowAPIServerEndpointDiscovery",
+      "Effect": "Allow",
+      "Resource": "arn:aws:eks:us-east-2:382458445256:cluster/my-eks-cluster",
+      "Action": "eks:DescribeCluster"
+    }
+  ]
+}
+EOF
+
+aws iam create-policy \
+  --policy-name "KarpenterControllerPolicy-my-eks-cluster" \
+  --policy-document file://karpenter-policy.json \
+  --query "Policy.Arn" \
+  --output text
+
+================================================
+STEP 6 — Add Missing Instance Profile Permissions
+================================================
+
+# THIS IS CRITICAL — missing from official docs!
+cat > karpenter-policy-addition.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowInstanceProfileManagement",
+      "Effect": "Allow",
+      "Resource": "*",
+      "Action": [
+        "iam:CreateInstanceProfile",
+        "iam:DeleteInstanceProfile",
+        "iam:GetInstanceProfile",
+        "iam:ListInstanceProfiles",
+        "iam:AddRoleToInstanceProfile",
+        "iam:RemoveRoleFromInstanceProfile",
+        "iam:TagInstanceProfile"
+      ]
+    }
+  ]
+}
+EOF
+
+aws iam create-policy \
+  --policy-name "KarpenterInstanceProfilePolicy-my-eks-cluster" \
+  --policy-document file://karpenter-policy-addition.json \
+  --query "Policy.Arn" \
+  --output text
+
+================================================
+STEP 7 — Attach Policies to Controller Role
+================================================
+
+aws iam attach-role-policy \
+  --role-name "my-eks-cluster-karpenter" \
+  --policy-arn "arn:aws:iam::382458445256:policy/KarpenterControllerPolicy-my-eks-cluster"
+
+aws iam attach-role-policy \
+  --role-name "my-eks-cluster-karpenter" \
+  --policy-arn "arn:aws:iam::382458445256:policy/KarpenterInstanceProfilePolicy-my-eks-cluster"
+
+================================================
+STEP 8 — Create Karpenter Node Role
+================================================
+
+cat > karpenter-node-trust-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
+aws iam create-role \
+  --role-name "KarpenterNodeRole-my-eks-cluster" \
+  --assume-role-policy-document file://karpenter-node-trust-policy.json \
+  --query "Role.Arn" \
+  --output text
+
+# attach required AWS managed policies
+aws iam attach-role-policy \
+  --role-name "KarpenterNodeRole-my-eks-cluster" \
+  --policy-arn "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+
+aws iam attach-role-policy \
+  --role-name "KarpenterNodeRole-my-eks-cluster" \
+  --policy-arn "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+
+aws iam attach-role-policy \
+  --role-name "KarpenterNodeRole-my-eks-cluster" \
+  --policy-arn "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+
+aws iam attach-role-policy \
+  --role-name "KarpenterNodeRole-my-eks-cluster" \
+  --policy-arn "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+
+================================================
+STEP 9 — Add Node Role to aws-auth
+================================================
+
+# get current aws-auth
+kubectl get configmap aws-auth -n kube-system -o yaml > aws-auth.yaml
+
+# update file with Karpenter node role
+cat > aws-auth.yaml << 'EOF'
+apiVersion: v1
+data:
+  mapRoles: |
+    - rolearn: arn:aws:iam::382458445256:role/eks-node-role
+      groups:
+      - system:bootstrappers
+      - system:nodes
+      username: system:node:{{EC2PrivateDNSName}}
+    - rolearn: arn:aws:iam::382458445256:role/KarpenterNodeRole-my-eks-cluster
+      groups:
+      - system:bootstrappers
+      - system:nodes
+      username: system:node:{{EC2PrivateDNSName}}
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+EOF
+
+kubectl apply -f aws-auth.yaml
+
+# verify
+kubectl describe configmap aws-auth -n kube-system
+
+================================================
+STEP 10 — Create SQS Interruption Queue
+================================================
+
+aws sqs create-queue \
+  --queue-name "my-eks-cluster" \
+  --region us-east-2 \
+  --attributes '{"MessageRetentionPeriod":"300"}'
+
+================================================
+STEP 11 — Tag Subnets and Security Groups
+================================================
+
+# find your subnets
+aws ec2 describe-subnets \
+  --filters "Name=vpc-id,Values=vpc-08b4334f979be1cb0" \
+  --query "Subnets[].[SubnetId,Tags[?Key=='Name'].Value|[0]]" \
+  --output table
+
+# tag subnets
+aws ec2 create-tags \
+  --resources subnet-0ccb826077af125f2 subnet-029d292a1020ff8ae \
+  --tags Key=karpenter.sh/discovery,Value=my-eks-cluster
+
+# find security group
+aws ec2 describe-security-groups \
+  --filters "Name=tag:kubernetes.io/cluster/my-eks-cluster,Values=owned" \
+  --query "SecurityGroups[].GroupId" \
+  --output text
+
+# tag security group
+aws ec2 create-tags \
+  --resources sg-0dc1337739353d5c0 \
+  --tags Key=karpenter.sh/discovery,Value=my-eks-cluster
+
+================================================
+STEP 12 — Install Karpenter via Helm
+================================================
+
+# logout ECR first
+helm registry logout public.ecr.aws
+
+# install
+helm upgrade --install karpenter \
+  oci://public.ecr.aws/karpenter/karpenter \
+  --version "1.12.0" \
+  --namespace kube-system \
+  --set "settings.clusterName=my-eks-cluster" \
+  --set "settings.interruptionQueue=my-eks-cluster" \
+  --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=arn:aws:iam::382458445256:role/my-eks-cluster-karpenter" \
+  --set controller.resources.requests.cpu=100m \
+  --set controller.resources.requests.memory=256Mi \
+  --set controller.resources.limits.cpu=500m \
+  --set controller.resources.limits.memory=512Mi
+
+# verify pods running
+kubectl get pods -n kube-system | grep karpenter
+
+================================================
+STEP 13 — Create NodePool + EC2NodeClass
+================================================
+
+cat > karpenter-nodepool.yaml << 'EOF'
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: default
+spec:
+  amiSelectorTerms:
+    - alias: al2023@latest
+  role: "KarpenterNodeRole-my-eks-cluster"
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "my-eks-cluster"
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: "my-eks-cluster"
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: default
+spec:
+  template:
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["t3.micro"]
+  limits:
+    cpu: 100
+    memory: 100Gi
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
+EOF
+
+kubectl apply -f karpenter-nodepool.yaml
+
+# verify
+kubectl get nodepool
+kubectl get ec2nodeclass
+
+================================================
+STEP 14 — Verify Karpenter Works
+================================================
+
+# deploy test workload
+cat > big-deployment.yaml << 'EOF'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: big-app
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: big-app
+  template:
+    metadata:
+      labels:
+        app: big-app
+    spec:
+      containers:
+        - name: app
+          image: public.ecr.aws/nginx/nginx:latest
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+EOF
+
+kubectl apply -f big-deployment.yaml
+
+# watch pods and nodes
+kubectl get pods -w
+kubectl get nodes -w
+
+# cleanup — watch Karpenter scale down
+kubectl delete deployment big-app
+
+================================================
+LESSONS LEARNED — GOTCHAS
+================================================
+
+1. Old Helm repo (charts.karpenter.sh) is dead
+   Use: oci://public.ecr.aws/karpenter/karpenter
+
+2. OIDC provider must be registered in IAM
+   Not just present in EKS — easy to miss!
+
+3. On Windows Git Bash — never inline JSON
+   Always use file:// approach
+
+4. t3.micro = Free Tier eligible
+   t3.small/medium/large = NOT Free Tier
+   Use t3.micro for personal AWS accounts
+
+5. Instance Profile policy missing from
+   official docs — must add manually
+
+6. Subnet + SG must have tag:
+   karpenter.sh/discovery = cluster-name
+
+7. Karpenter resource requests must be
+   small on t3.micro nodes (256Mi not 1Gi)
+
+================================================
+kamalesh parthiban@kamalesh MINGW64 ~/terraform_EKS
+$ kubectl get nodes
+NAME                                       STATUS   ROLES    AGE   VERSION
+ip-10-0-1-205.us-east-2.compute.internal   Ready    <none>   57m   v1.35.4-eks-40737a8
+ip-10-0-1-51.us-east-2.compute.internal    Ready    <none>   57m   v1.35.4-eks-40737a8
+ip-10-0-2-121.us-east-2.compute.internal   Ready    <none>   57m   v1.35.4-eks-40737a8
+ip-10-0-2-199.us-east-2.compute.internal   Ready    <none>   57m   v1.35.4-eks-40737a8
+ 
+to
+
+kamalesh parthiban@kamalesh MINGW64 ~/terraform_EKS
+$ kubectl get nodes -w
+NAME                                       STATUS   ROLES    AGE     VERSION
+ip-10-0-1-166.us-east-2.compute.internal   Ready    <none>   3m36s   v1.35.4-eks-40737a8
+ip-10-0-1-192.us-east-2.compute.internal   Ready    <none>   3m35s   v1.35.4-eks-40737a8
+ip-10-0-1-205.us-east-2.compute.internal   Ready    <none>   75m     v1.35.4-eks-40737a8
+ip-10-0-1-49.us-east-2.compute.internal    Ready    <none>   3m35s   v1.35.4-eks-40737a8
+ip-10-0-1-51.us-east-2.compute.internal    Ready    <none>   75m     v1.35.4-eks-40737a8
+ip-10-0-2-121.us-east-2.compute.internal   Ready    <none>   75m     v1.35.4-eks-40737a8
+ip-10-0-2-199.us-east-2.compute.internal   Ready    <none>   75m     v1.35.4-eks-40737a8
+ip-10-0-1-166.us-east-2.compute.internal   Ready    <none>   3m45s   v1.35.4-eks-40737a8
+ip-10-0-2-199.us-east-2.compute.internal   Ready    <none>   76m     v1.35.4-eks-40737a8
+ip-10-0-1-49.us-east-2.compute.internal    Ready    <none>   4m15s   v1.35.4-eks-40737a8
+ip-10-0-1-51.us-east-2.compute.internal    Ready    <none>   77m     v1.35.4-eks-40737a8
+
+
+$ kubectl get pods -w
+NAME                       READY   STATUS    RESTARTS   AGE
+big-app-6699c74d55-hwtcr   1/1     Running   0          2m49s
+big-app-6699c74d55-j4cgt   1/1     Running   0          3m24s
+big-app-6699c74d55-lrbxv   1/1     Running   0          2m49s
+big-app-6699c74d55-r9l6c   1/1     Running   0          3m28s
+big-app-6699c74d55-rqzs7   1/1     Running   0          5m56s
+big-app-6699c74d55-svgl5   1/1     Running   0          5m56s
+big-app-6699c74d55-sz4j4   1/1     Running   0          5m56s
+big-app-6699c74d55-t2tns   1/1     Running   0          5m56s
+big-app-6699c74d55-vz69l   1/1     Running   0          5m56s
+big-app-6699c74d55-x8m48   1/1     Running   0          68s
+--------------------
+Small notes
+
+KARPENTER INSTALLATION STEPS
+==============================
+
+1. Set env variables
+   export CLUSTER_NAME, AWS_REGION,
+   AWS_ACCOUNT_ID, KARPENTER_VERSION="1.12.0"
+
+2. Get OIDC ID
+   aws eks describe-cluster --name $CLUSTER_NAME
+
+3. Register OIDC in IAM
+   aws iam create-open-id-connect-provider
+
+4. Create controller IAM role
+   karpenter-trust-policy.json → aws iam create-role
+   role: my-eks-cluster-karpenter
+
+5. Create controller policy
+   karpenter-policy.json → aws iam create-policy
+   + karpenter-policy-addition.json (instance profile perms)
+   → attach both to controller role
+
+6. Create node role
+   karpenter-node-trust-policy.json → aws iam create-role
+   role: KarpenterNodeRole-my-eks-cluster
+   → attach 4 managed policies:
+      AmazonEKSWorkerNodePolicy
+      AmazonEKS_CNI_Policy
+      AmazonEC2ContainerRegistryReadOnly
+      AmazonSSMManagedInstanceCore
+
+7. Add node role to aws-auth
+   kubectl get configmap aws-auth -o yaml > aws-auth.yaml
+   → add KarpenterNodeRole → kubectl apply
+
+8. Create SQS queue
+   aws sqs create-queue --queue-name my-eks-cluster
+
+9. Tag subnets + security group
+   Key=karpenter.sh/discovery
+   Value=my-eks-cluster
+
+10. Install via Helm OCI
+    helm registry logout public.ecr.aws
+    helm upgrade --install karpenter
+    oci://public.ecr.aws/karpenter/karpenter
+    --version 1.12.0
+    --set memory=256Mi (not 1Gi — t3.micro)
+
+11. Create NodePool + EC2NodeClass
+    kubectl apply -f karpenter-nodepool.yaml
+    instance-type: t3.micro (Free Tier only)
+
+12. Test
+    deploy 10 pods → nodes added ✅
+    delete pods   → nodes removed ✅
