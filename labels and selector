@@ -6,6 +6,8 @@ Labels are key-value pairs attached to objects (pods, nodes, services, deploymen
 An object can have multiple labels
 Labels can be added/updated anytime
 
+kubectl label nodes <node-name> <key>=<value>
+
 metadata:
   labels:
     app: frontend
