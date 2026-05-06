@@ -49,6 +49,9 @@ Kube-Proxy       -- Daemonset
 
 Container Runtime
 
+EKS uses containerd as the default container runtime.
+Docker images still work — containerd can run all docker images
+
 1) Responsible for executing & managing the containerized application on a host system.
 2) Container runtime handles tasks such as creating, starting, stopping & deleting containers.
 3) Popular container runtimes include Docker Engine, containerd, CRI-O.
