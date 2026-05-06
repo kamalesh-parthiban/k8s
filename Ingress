@@ -1,6 +1,51 @@
 Ingress is a Kubernetes resource that manages external HTTP/HTTPS traffic routing into your cluster services.
 
 Ingress Controller nothing but pod that should be created to route the traffic and we can define rules in Ingress resource.
+--------------------------------
+Ingress Resource does NOT run like a pod.
+
+What Ingress Resource Actually Is
+It is just a configuration file / set of rules — like a routing table. It tells the Ingress Controller how to route traffic, but it doesn't run anything itself.
+-------------------------------------------
+How It Works Together
+---------------------------------------
+User Request
+     ↓
+Ingress Controller (Running Pod - NGINX)
+     ↓ reads rules from
+Ingress Resource (Your ingress.yaml)
+     ↓ routes to
+Service (api-service or web-service)
+     ↓
+Your App Pods
+
+-------------------------------------------------------------------
+kubectl apply -f ingress.yaml
+
+kubectl get ingress
+
+NAME     CLASS   HOSTS               ADDRESS        PORTS   AGE
+my-app   nginx   myapp.example.com   1.2.3.4        80      10s
+------------------------------------------------------------------------------------
+The Two Different Things
+
+Ingress Resource              Ingress Controller
+------------------------------------------------------------
+What it is
+Just a YAML config/rules      Actual running Pod
+
+Runs as Pod?
+❌ No                          ✅ Yes
+
+Does work?
+❌ No                          ✅ Yes
+
+Who creates it?
+You (developer)               Installed separately (e.g. nginx)
+
+Example
+Your ingress.yaml above       nginx-ingress-controller pod
+-------------------------------------------------------------------
 
 HTTP Ingress
 # ingress.yaml
