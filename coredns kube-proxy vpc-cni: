@@ -1,1 +1,76 @@
+1. CoreDNS:
 
+What: DNS server for Kubernetes
+Purpose: Service discovery inside cluster
+
+Pod wants to reach mysql-service:
+        ↓
+CoreDNS resolves name to IP
+mysql-service.default.svc.cluster.local
+        ↓
+Returns ClusterIP ✅
+Pod connects ✅
+
+Without CoreDNS:
+  Pods cannot find each other ❌
+  Service names don't work ❌
+  Must use IPs directly ❌
+------------------------------------------------------------------------------------------------------------------------------------
+2. kube-proxy:
+
+What: Network proxy on every node
+Purpose: Routes traffic to correct pods
+
+Request hits Service ClusterIP:
+        ↓
+kube-proxy intercepts
+        ↓
+Checks iptables rules
+        ↓
+Forwards to correct pod IP ✅
+
+Without kube-proxy:
+  Services don't work ❌
+  Traffic cannot reach pods ❌
+  LoadBalancer won't work ❌
+------------------------------------------------------------------------------------------------------------------------------------
+3. VPC CNI:
+
+What: Container Network Interface for AWS
+Purpose: Gives pods real AWS VPC IP addresses
+
+Pod created:
+        ↓
+VPC CNI assigns real VPC IP
+e.g. 10.0.1.25 ✅
+        ↓
+Pod can communicate directly
+with other AWS services ✅
+RDS, ElastiCache, EC2 ✅
+
+Without VPC CNI:
+  Pods get fake IPs ❌
+  Cannot talk to AWS services directly ❌
+  No VPC level networking ❌
+------------------------------------------------------------------------------------------------------------------------------------
+
+How they work together:
+
+Pod A wants to reach Service B:
+
+1. Pod A asks CoreDNS           ← DNS resolution
+        ↓
+2. CoreDNS returns ClusterIP
+        ↓
+3. kube-proxy routes traffic    ← traffic routing
+        ↓
+4. VPC CNI delivers packet      ← network delivery
+   to correct pod IP ✅
+------------------------------------------------------------------------------------------------------------------------------------
+Simple one liner each:
+
+Addon        | One liner
+-----------------------------------------------
+CoreDNS      | DNS — finds services by name
+kube-proxy   | Routing — sends traffic to right pod
+VPC CNI      | Networking — gives pods real AWS VPC IPs
