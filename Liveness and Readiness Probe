@@ -92,6 +92,14 @@ USEFUL COMMANDS
 kubectl get ep
 kubectl get endpoints
 
+Service → ClusterIP (virtual)
+Endpoints → actual Pod IPs
+
+my-app-service:
+  ClusterIP: 10.96.0.1      ← virtual IP
+  Endpoints: 10.244.1.5:80  ← real pod IP
+             10.244.1.6:80  ← real pod IP
+
 ───────────────────────────────────────────
 NOTES
 ───────────────────────────────────────────
