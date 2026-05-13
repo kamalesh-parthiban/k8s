@@ -20,7 +20,7 @@ Fix:
   → fix PVC / storage class
 
 
-2. CRASHLOOPBACKOFF
+2. CRASHLOOPBACKOFF -- Missing config map or secret
 ──────────────────────────────────────────────────────────
 
 Reason:
