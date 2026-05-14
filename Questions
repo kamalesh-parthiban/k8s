@@ -238,4 +238,97 @@ kubectl get pod <name> -o wide                       Single pod IP with details
 kubectl get pods -o wide                             All pods IP at once
 kubectl describe pod <name>                          Full pod details including IP
 kubectl get pod <name> -o jsonpath='{.status.podIP}' Only the IP, clean output
+------------------------------------------------------------------------------------------------
+
+How do you design a rollback strategy for a failed production deployment?
+
+Strategy 1 — Kubernetes Rolling Rollback:
+
+# Check deployment history
+kubectl rollout history deployment/myapp -n production
+
+# Output:
+REVISION  CHANGE-CAUSE
+1         version 1.0 deployed
+2         version 1.1 deployed
+3         version 1.2 deployed ← current (broken)
+
+# Rollback to previous version
+kubectl rollout undo deployment/myapp -n production
+
+# Rollback to specific version
+kubectl rollout undo deployment/myapp \
+  --to-revision=1 -n production
+
+# Verify rollback
+kubectl rollout status deployment/myapp -n production
+
+--------------------
+
+Strategy 2 — Blue Green Deployment:
+
+Current state:
+├── Blue (v1.0) → LIVE traffic ✅
+└── Green (v1.1) → new version
+
+Deploy new version:
+├── Blue (v1.0) → standby
+└── Green (v1.1) → LIVE traffic ✅
+
+Something breaks:
+Switch back instantly:
+├── Blue (v1.0) → LIVE traffic ✅ (rollback done)
+└── Green (v1.1) → standby
+
+Rollback time → seconds ⚡
+Zero downtime ✅
+----------------------
+Strategy 3 — Canary Rollback:
+
+Normal canary:
+├── 90% traffic → v1.0 (stable)
+└── 10% traffic → v1.1 (new)
+
+Errors detected in canary:
+├── 100% traffic → v1.0 (rollback)
+└── 0% traffic  → v1.1 (stopped)
+
+Only 10% users affected ✅
+Quick rollback ✅
+
+------
+Strategy 4 — ArgoCD Rollback (your company):
+
+# Check history
+argocd app history myapp
+
+# Rollback to previous version
+argocd app rollback myapp
+
+# Rollback to specific revision
+argocd app rollback myapp --revision 5
+
+# Verify
+argocd app get myapp
+
+----
+
+Strategy 5 — Helm Rollback:
+
+# Check release history
+helm history myapp -n production
+
+# Output:
+REVISION  STATUS     CHART
+1         superseded myapp-1.0
+2         superseded myapp-1.1
+3         failed     myapp-1.2  ← current broken
+
+# Rollback to revision 2
+helm rollback myapp 2 -n production
+
+# Verify
+helm status myapp -n production
+-----------------------------------------------
+
 
