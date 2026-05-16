@@ -330,5 +330,86 @@ helm rollback myapp 2 -n production
 # Verify
 helm status myapp -n production
 -----------------------------------------------
+How do you restrict pod-to-pod communication in Kubernetes inside a cluster?
+---
+Default behavior:
+---
+Without Network Policy:
+Every pod → can talk to every pod ❌
+No restrictions
+Security risk
+---
+Solution — Network Policies:
+---
+With Network Policy:
+Only allowed pods → can communicate ✅
+Everything else   → blocked ❌
+-----------------------------------------------------
+One line for interview:
+---
+"We use Kubernetes Network Policies with a default deny-all approach, then explicitly allow only required pod to pod communication using pod and namespace selectors,
+implemented with Calico CNI on our EKS clusters"
+---------------
+Important — CNI plugin needed:
+-----------------
+Network Policy needs CNI that supports it:
+
+✅ Calico      → most popular
+✅ Cilium      → advanced features
+✅ Weave       → simple setup
+❌ Flannel     → does NOT support NetworkPolicy
+
+AWS EKS default → uses VPC CNI
+→ need to install Calico additionally
+   for NetworkPolicy support
+--------------------------------------
+How it works:
+
+Network Policy = firewall rules for pods
+
+Controls:
+├── Ingress → who can SEND traffic to pod
+└── Egress  → where pod can SEND traffic
+-------------------------------
+
+Real microservices setup:
+
+# Payment service policy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: payment-policy
+  namespace: production
+spec:
+  podSelector:
+    matchLabels:
+      app: payment-service
+
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: api-gateway    ← only api-gateway can call payment
+      ports:
+        - port: 8080
+
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app: database       ← payment can only talk to DB
+      ports:
+        - port: 5432
+
+    - to:                         ← allow DNS
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+-----------------------------------------------------------------------------------------------
+
 
 
