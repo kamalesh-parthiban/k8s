@@ -1,0 +1,140 @@
+! Regardless of which controller you use, Ingress resource (YAML) is always needed — that's how you define the routing rules:
+---------------------------------------------------------------------------------------
+
+Host-based  = different domains/subdomains
+Path-based  = same domain, different paths
+Both combined — host-based + path-based routing together. ✅
+TLS/HTTPS based routing
+---------------------------------------------------
+
+Host-based routing example
+---------------------------------------
+rules:
+  - host: api.myapp.com
+    http:
+      paths:
+      - path: /
+        backend:
+          service:
+            name: api-service
+            port:
+              number: 80
+
+  - host: auth.myapp.com
+    http:
+      paths:
+      - path: /
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 80
+
+  - host: dashboard.myapp.com
+    http:
+      paths:
+      - path: /
+        backend:
+          service:
+            name: dashboard-service
+            port:
+              number: 80
+------------------------------------------
+Path base Routing
+--------------
+rules:
+  - host: myapp.com
+    http:
+      paths:
+      - path: /api
+        backend:
+          service:
+            name: api-service
+            port:
+              number: 80
+
+      - path: /auth
+        backend:
+          service:
+            name: auth-service
+            port:
+              number: 80
+
+      - path: /dashboard
+        backend:
+          service:
+            name: dashboard-service
+            port:
+              number: 80
+----------------------------------------
+Both combined — host-based + path-based routing together. ✅
+------------------------------------------------------------------
+
+rules:
+  - host: api.myapp.com
+    http:
+      paths:
+      - path: /users
+        backend:
+          service:
+            name: users-service
+            port:
+              number: 80
+      - path: /orders
+        backend:
+          service:
+            name: orders-service
+            port:
+              number: 80
+
+  - host: auth.myapp.com
+    http:
+      paths:
+      - path: /login
+        backend:
+          service:
+            name: login-service
+            port:
+              number: 80
+      - path: /signup
+        backend:
+          service:
+            name: signup-service
+            port:
+              number: 80
+
+  - host: dashboard.myapp.com
+    http:
+      paths:
+      - path: /reports
+        backend:
+          service:
+            name: reports-service
+            port:
+              number: 80
+      - path: /analytics
+        backend:
+          service:
+            name: analytics-service
+            port:
+              number: 80
+------------------------------------------------------
+TLS/HTTPS based routing
+
+http://myapp.com  → redirects to https ✅
+https://myapp.com → my-service ✅
+--------------------------
+tls:
+  - hosts:
+    - myapp.com
+    secretName: myapp-tls    # SSL certificate
+rules:
+  - host: myapp.com
+    http:
+      paths:
+      - path: /
+        backend:
+          service:
+            name: my-service
+            port:
+              number: 80
