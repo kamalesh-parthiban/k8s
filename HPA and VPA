@@ -3,6 +3,11 @@ HPA and VPA in K8S?
 HPA adds more pods when CPU/memory is high — scales out horizontally with zero downtime, needs Metrics Server to read pod metrics.
 VPA resizes CPU/memory of existing pods by killing and recreating them — causes brief downtime unless multiple replicas plus PodDisruptionBudget are used to restart one by one.
 
+PDB
+
+PodDisruptionBudget ensures minimum number of pods stay running during voluntary disruptions like node drain or maintenance. We define either 
+minAvailable to set minimum running pods or maxUnavailable to set maximum pods that can go down at a time. ✅
+
 Timeline with 4 pods + PDB:
 
 Time 0:  Pod1✅ Pod2✅ Pod3✅ Pod4✅  (all serving)
