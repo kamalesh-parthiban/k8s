@@ -9,7 +9,7 @@ Three effects:
 Effect              Behavior
 NoSchedule          New pods do not tolerate the taint won't be scheduled on the node (existing pods stay)
 PreferNoSchedule    Kubernetes tries to avoid scheduling, but not guaranteed (existing pods stay)
-NoExecute           New pods won't schedule AND existing pods are evicted if they don't tolerate it
+NoExecute           New pods won't schedule if they don't tolerate it AND existing pods are evicted if they don't tolerate it
 
 Tolerations (applied to Pods)
 
