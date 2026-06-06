@@ -6,13 +6,29 @@ Labels are key-value pairs attached to objects (pods, nodes, services, deploymen
 An object can have multiple labels
 Labels can be added/updated anytime
 
+1. Node Label — applied to NODE:
+
 kubectl label nodes <node-name> <key>=<value>
 
+2. Pod/Deployment Label — applied to POD:
+
+# Deployment object
+apiVersion: apps/v1
+kind: Deployment
 metadata:
+  name: frontend
   labels:
-    app: frontend
-    env: production
-    tier: web
+    app: frontend        # ← deployment label
+spec:
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend    # ← pod label
+        env: production
+        tier: web
 
 
 Selectors (used to query/filter objects)
