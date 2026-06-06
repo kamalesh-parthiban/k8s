@@ -1,0 +1,18 @@
+Pod → Pod (direct IP)     →  CNI handles        (no kube-proxy)
+Pod → Service → Pod       →  kube-proxy handles  ✅
+External → Service → Pod  →  kube-proxy handles  ✅
+
+kube-proxy is not involved in pod to pod communication — CNI handles that directly. kube-proxy only comes into picture when traffic goes through a Service, 
+because Service ClusterIP is a virtual IP that kube-proxy translates to real pod IP using iptables rules. ✅
+
+Pod A knows Pod B IP directly  →  CoreDNS NOT involved ❌
+Pod A knows Pod B by name      →  CoreDNS IS involved ✅
+
+Pod A
+  │
+  ├── knows IP directly?     → CNI routes it (no CoreDNS, no kube-proxy)
+  │
+  ├── knows Service name?    → CoreDNS resolves name to ClusterIP
+  │                             → kube-proxy forwards to Pod IP
+  │
+  └── knows ClusterIP?       → kube-proxy forwards to Pod IP
