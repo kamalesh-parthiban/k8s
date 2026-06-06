@@ -89,6 +89,17 @@ spec:
       labels:
         app: frontend # 👈 Pods are CREATED WITH this label
                       #    (so the deployment can find them)
+--------------------------------------------------
+How they connect — NodeSelector:
+
+# Schedule pod ON specific node using labels
+spec:
+  nodeSelector:
+    env: production      # ← matches node label ✅
+  containers:
+    - name: frontend
+      image: nginx
+--------------------------------------------------
 
 
 What Happens If They Don't Match?
