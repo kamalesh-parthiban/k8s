@@ -1,3 +1,10 @@
+| Component          | Namespace   | Type       |
+| ------------------ | ----------- | ---------- |
+| CoreDNS            | kube-system | Deployment |
+| kube-proxy         | kube-system | DaemonSet  |
+| vpc-cni (aws-node) | kube-system | DaemonSet  |
+
+-----------------------------------------------------------------
 1. CoreDNS:
 
 What: DNS server for Kubernetes
