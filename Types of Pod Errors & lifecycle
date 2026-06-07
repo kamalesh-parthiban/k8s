@@ -1,3 +1,18 @@
+Define pod lifecycle.
+
+| Phase     | Meaning                                            |
+| --------- | -------------------------------------------------- |
+| Pending   | Pod accepted but not yet running                   |
+| Running   | Pod scheduled on node, containers starting/running |
+| Succeeded | All containers completed successfully              |
+| Failed    | At least one container exited with error           |
+| Unknown   | Pod status cannot be determined                    |
+
+
+Pod lifecycle has 5 phases — Pending, Running, Succeeded, Failed, and Unknown. During Running phase,
+Kubernetes runs liveness, readiness and startup probes to check container health and restarts containers based on the restart policy if probes fail. ✅
+
+
 1. PENDING
 ──────────────────────────────────────────────────────────
 
