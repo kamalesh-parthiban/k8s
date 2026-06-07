@@ -93,3 +93,13 @@ Pod IP direct        ❌ Changes on restart        ❌
 Service ClusterIP    ⚠️ Changes if recreated      ❌
 Service DNS name     ✅ Always stable             ✅
 
+---------------------------------
+Who does what:
+
+Component        Role
+------------------------------------------------
+CoreDNS          Resolves service name to ClusterIP
+
+kube-proxy       Translates ClusterIP to Pod IP
+
+CNI (vpc-cni)    Routes packet to correct node/pod
