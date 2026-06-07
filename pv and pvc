@@ -99,6 +99,8 @@ Reclaim Policy is written in PV only 👇
         │ Recycle       │ Data wiped, PV reusable (deprecated)       |         New PVC can claim it again
         └───────────────┴──────────────────────────────────────────────────────┘
 
+Recycle❌ Deprecated — don't use
+
 1. PersistentVolume:
 
 apiVersion: v1
