@@ -21,3 +21,75 @@ Pod A
   │                             → kube-proxy forwards to Pod IP
   │
   └── knows ClusterIP?       → kube-proxy forwards to Pod IP
+--------------------------------------------
+how pod to communicte to another pod?
+
+3 ways Pod communicates to another Pod:
+
+1. Direct Pod IP (rarely used)
+
+Pod A (10.0.1.5) → Pod B (10.0.1.6)
+
+# Inside Pod A
+curl http://10.0.1.6:8080
+
+❌ Not recommended — Pod IP changes on restart
+
+2. Service ClusterIP
+
+Pod A → Service ClusterIP → kube-proxy → Pod B
+
+kubectl get svc payment-service
+
+# NAME              CLUSTER-IP    PORT
+# payment-service   10.96.0.45    8080
+
+# Method 1 — Service IP (not recommended)
+curl http://10.96.0.45:8080
+
+
+⚠️ changes if recreated
+
+
+3. Via Service DNS name (best practice)
+
+Pod A → CoreDNS resolves name → ClusterIP → kube-proxy → Pod B
+
+# Inside Pod A
+ Short DNS
+curl http://payment-service:8080  # DNS ✅ same namespace
+
+ Full DNS
+curl http://payment-service.default.svc.cluster.local:8080  # DNS ✅ cross namespace
+        ↓
+   CoreDNS resolves → 10.96.0.1
+        ↓
+   kube-proxy → real Pod IP ✅
+
+Full flow — best practice:
+
+Pod A
+  │
+  │ curl payment-service:8080
+  ↓
+CoreDNS (resolves name → ClusterIP)
+  ↓
+kube-proxy (ClusterIP → real Pod IP)
+  ↓
+CNI (routes packet to correct node)
+  ↓
+Pod B ✅
+
+----------------------------------------
+Pod IP        → changes on every restart ❌
+Service IP    → stable as long as service exists ✅
+               changes ONLY if service deleted + recreated
+---------------------------------------------
+Summary:
+
+Method               Reliable?                    Readable?
+------------------------------------------------------------
+Pod IP direct        ❌ Changes on restart        ❌
+Service ClusterIP    ⚠️ Changes if recreated      ❌
+Service DNS name     ✅ Always stable             ✅
+
