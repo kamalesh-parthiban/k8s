@@ -1,3 +1,54 @@
+This is a real production grade setup — exactly what large enterprises like payment companies use.
+
+User types: app.globalpayments.com
+        ↓
+Route53          → DNS resolution (custom domain)
+        ↓
+CloudFront [ CDN ]      → edge caching, global delivery
+        ↓
+WAF              → block SQLi, XSS, bots
+        ↓
+Shield Advanced  → DDoS protection
+        ↓
+NLB              → L4 load balancing
+        ↓
+NGINX Ingress    → L7 path/host routing
+        ↓
+EKS Services     → microservices
+        ↓
+Pods ✅
+-------------------------------------------------------------------------
+User → app.globalpayments.com
+        ↓
+Route53              ← $0.50/hosted zone + $0.40/million queries
+        ↓
+CloudFront           ← $0.0085/GB transfer
+        ↓
+AWS WAF              ← $5/month + $1/million requests
+        ↓
+Shield Advanced      ← $3000/month (but covers all resources)
+        ↓
+NLB                  ← $0.008/LCU hour
+        ↓
+NGINX Ingress        ← free (runs as pod)
+        ↓
+EKS Pods ✅
+-------------------------------------------------------------
+Cost comparison:
+
+Setup           Cost
+------------------------------------------------
+Akamai + AWS    💰💰💰 Very expensive
+
+Full AWS stack  💰 Much cheaper
+----------------------------------------------------
+# With CloudFront (AWS only)
+Route53 → CloudFront → AWS WAF → Shield Advanced → NLB → NGINX → Pods
+
+# With Akamai (simpler)
+Route53 → Akamai (CDN+WAF+DDoS) → NLB → NGINX → Pods ✅
+-------------------------------------------------------------------------------
+
 Full Comparison Now
 
 is both are load balancer?
