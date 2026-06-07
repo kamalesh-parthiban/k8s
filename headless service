@@ -95,3 +95,27 @@ kube-proxy watches → Endpoints object
 
 kube-proxy removes NotReady pods from iptables rules
 → traffic never hits unhealthy pods
+----------------------------------------------
+Every pod gets a DNS name — but it's not commonly used.
+
+Why Pod DNS is not commonly used:
+
+Pod IP changes every time pod restarts ❌
+# New pod → new IP → new DNS name
+# Unreliable!
+
+Service IP never changes ✅
+# Service DNS always same — even if pods restart
+
+Exception — StatefulSet pods:
+
+# StatefulSet pods get STABLE DNS names ✅
+<pod-name>.<service-name>.<namespace>.svc.cluster.local
+
+# Example:
+mysql-0.mysql-service.default.svc.cluster.local
+mysql-1.mysql-service.default.svc.cluster.local
+mysql-2.mysql-service.default.svc.cluster.local
+
+statefulSet pod DNS is stable — doesn't change on restart! ✅
+
