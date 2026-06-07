@@ -133,4 +133,45 @@ Ex:
         values:
           - val2
           - val3
+-----------------------------------------------------------
+What are maxUnavailable and maxSurge in Kubernetes?
 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payment-service
+spec:
+  replicas: 4
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0    # zero downtime ✅
+      maxSurge: 1          # 1 extra pod during update
+
+maxUnavailable controls how many pods can be down during rolling update and maxSurge controls how many extra pods can be created above replica count. 
+Setting maxUnavailable to 0 ensures zero downtime deployments by always maintaining full replica count during updates. ✅
+
+
+Default values:
+
+rollingUpdate:
+  maxUnavailable: 25%    # 25% of pods can be down
+  maxSurge: 25%          # 25% extra pods allowed
+
+Different strategies:
+
+# Fast update — more surge, less safe
+rollingUpdate:
+  maxUnavailable: 0
+  maxSurge: 2          # create 2 new before removing old
+
+# Safe update — zero downtime
+rollingUpdate:
+  maxUnavailable: 0    # never go below replica count
+  maxSurge: 1          # only 1 extra at a time
+
+# Fast but risky
+rollingUpdate:
+  maxUnavailable: 2    # 2 pods can be down
+  maxSurge: 0          # no extra pods
+---------------------------------------------------------------------------------------------------
