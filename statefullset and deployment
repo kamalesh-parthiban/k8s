@@ -10,6 +10,11 @@ difference b/w statefullset and deployment
 | **Use Case**         | Stateless apps (web servers, APIs)           | Stateful apps (databases, Kafka, Zookeeper)             |
 | **Headless Service** | Not required                                 | **Required** for stable network identity                |
 
+Yes. A StatefulSet supports both rolling updates and rollbacks
+
+kubectl rollout undo deployment/myapp
+
+kubectl rollout history statefulset/myapp
 
 Storage Difference:
 
