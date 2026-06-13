@@ -13,9 +13,11 @@ difference b/w statefullset and deployment
 Like a Deployment, a StatefulSet's primary controller responsibility is to ensure the desired number of Pods are running.
 Yes. A StatefulSet supports both rolling updates and rollbacks
 
-kubectl rollout undo deployment/myapp
+kubectl rollout undo statefulset/myapp
 
 kubectl rollout history statefulset/myapp
+
+kubectl rollout undo statefulset/my-app --to-revision=2
 
 Storage Difference:
 
