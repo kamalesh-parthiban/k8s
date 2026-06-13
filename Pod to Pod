@@ -19,10 +19,24 @@ Normal ClusterIP:
 Pod → DNS → ClusterIP (10.100.200.50) → random pod
 
 Headless:
+
+kube-proxy is NOT involved in headless service.
+
 Pod → DNS → returns ALL pod IPs directly
            → pod-0 (10.0.1.10)
            → pod-1 (10.0.1.11)
            → pod-2 (10.0.1.12)
+-------
+Normal ClusterIP:
+Pod → CoreDNS → ClusterIP (virtual IP)
+             → kube-proxy intercepts
+             → picks random pod
+             → forwards traffic ✅
+
+Headless:
+Pod → CoreDNS → returns pod IPs directly
+             → client connects directly to pod
+             → kube-proxy skipped ✅
 ----------------------------------------------------------------------------------------------------------
 
 Pod → Pod (direct IP)     →  CNI handles        (no kube-proxy)
