@@ -3,6 +3,9 @@ Every Kubernetes service including ClusterIP gets a DNS name in the format servi
 Pods should always communicate using service DNS names, never hardcoded pod IPs. Pod IPs change every time a pod restarts, 
 but the service DNS name stays stable and always resolves to healthy pods via CoreDNS.
 
+only Headless service creates individual pod DNS names.
+ClusterIP:
+# NO individual pod DNS ❌
 
 kubectl get svc -n payments
 
