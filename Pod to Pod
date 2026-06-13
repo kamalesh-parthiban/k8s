@@ -1,3 +1,20 @@
+every Kubernetes service including ClusterIP gets a DNS name in the format service-name.namespace.svc.cluster.local, resolved by CoreDNS inside the cluster. 
+Pods in the same namespace can use just the short service name, while pods in different namespaces need the full DNS name.
+
+Headless Service = ClusterIP set to None — no virtual IP, DNS returns pod IPs directly.
+
+Normal ClusterIP vs Headless:
+
+Normal ClusterIP:
+Pod → DNS → ClusterIP (10.100.200.50) → random pod
+
+Headless:
+Pod → DNS → returns ALL pod IPs directly
+           → pod-0 (10.0.1.10)
+           → pod-1 (10.0.1.11)
+           → pod-2 (10.0.1.12)
+----------------------------------------------------------------------------------------------------------
+
 Pod → Pod (direct IP)     →  CNI handles        (no kube-proxy)
 Pod → Service → Pod       →  kube-proxy handles  ✅
 External → Service → Pod  →  kube-proxy handles  ✅
