@@ -1,5 +1,8 @@
-every Kubernetes service including ClusterIP gets a DNS name in the format service-name.namespace.svc.cluster.local, resolved by CoreDNS inside the cluster. 
-Pods in the same namespace can use just the short service name, while pods in different namespaces need the full DNS name.
+Every Kubernetes service including ClusterIP gets a DNS name in the format service-name.namespace.svc.cluster.local, resolved by CoreDNS inside the cluster. 
+
+Pods should always communicate using service DNS names, never hardcoded pod IPs. Pod IPs change every time a pod restarts, 
+but the service DNS name stays stable and always resolves to healthy pods via CoreDNS.
+
 
 kubectl get svc -n payments
 
