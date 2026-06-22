@@ -26,6 +26,14 @@ You'll see:  kube-proxy  |  coredns  |  vpc-cni
              "Update available" badge on each
         ↓
 Click each add-on → "Edit" → select latest version → "Save changes"
+
+How each runs
+
+Add-on      | Type       | Why
+------------|------------|---------------------------------------------------------------
+kube-proxy  | DaemonSet  | Needs to run on every node — manages iptables rules per node
+CoreDNS     | Deployment | Just needs to be available cluster-wide — 2 replicas, any node
+vpc-cni     | DaemonSet  | Needs to run on every node — assigns pod IPs from VPC per node
 ---------------
 Step 3 — Upgrade Worker Nodes
 
