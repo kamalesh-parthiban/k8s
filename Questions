@@ -410,6 +410,15 @@ spec:
       ports:
         - port: 53
 -----------------------------------------------------------------------------------------------
+What additional components do you install after EKS provisioning?
 
+Install order (recommended)
+
+1. vpc-cni / CoreDNS / kube-proxy   (add-ons)
+2. Karpenter                         (scaling first)
+3. NGINX Ingress + LB Controller     (networking)
+4. ArgoCD                            (GitOps)
+5. Prometheus + Grafana              (observability)
+6. Cert-manager + External Secrets   (security)
 
 
