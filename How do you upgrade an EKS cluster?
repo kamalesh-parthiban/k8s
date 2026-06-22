@@ -1,0 +1,61 @@
+How do you upgrade an EKS cluster?
+
+High-Level Order (never skip this sequence)
+
+1. Control Plane first
+2. Add-ons second
+3. Worker Nodes last
+
+Upgrading nodes before control plane = unsupported / breaks things.
+
+Step 1 — Upgrade Control Plane
+
+AWS Console → EKS → Clusters → select "coreiq"
+        ↓
+Overview tab → Kubernetes version → click "Update now"
+        ↓
+Select target version (e.g. 1.29) → click "Update"
+        ↓
+Wait ~20 mins → status changes to "Active"
+-------------------------
+Step 2 — Upgrade Add-ons
+
+EKS → Clusters → coreiq → Add-ons tab
+        ↓
+You'll see:  kube-proxy  |  coredns  |  vpc-cni
+             "Update available" badge on each
+        ↓
+Click each add-on → "Edit" → select latest version → "Save changes"
+---------------
+Step 3 — Upgrade Worker Nodes
+
+EKS → Clusters → coreiq → Compute tab
+        ↓
+Node groups section → select node group
+        ↓
+Click "Update now" → choose update strategy:
+   • Rolling update (recommended — no downtime)
+   • Force update (faster but may cause downtime)
+        ↓
+Confirm → AWS drains and replaces nodes one by one
+-----------
+Step 4 — Verify
+
+EKS → Clusters → coreiq → Overview tab
+        ↓
+Check Kubernetes version shows 1.29
+        ↓
+Compute tab → Node groups → confirm all nodes on new version
+
+---
+Visual flow
+
+Clusters
+  └── coreiq
+        ├── Overview      ← Step 1 (Control Plane)
+        ├── Add-ons       ← Step 2
+        └── Compute       ← Step 3 (Node Groups)
+---------------
+
+
+
