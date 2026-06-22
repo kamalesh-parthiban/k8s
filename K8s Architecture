@@ -47,6 +47,9 @@ Kube-Proxy       -- Daemonset
 - Responsible for maintaining network rules on nodes.
 - Helps expose services to the network.
 
+kube-proxy only comes into picture when traffic goes through a Service, 
+because Service ClusterIP is a virtual IP that kube-proxy translates to real pod IP using iptables rules.
+
 Container Runtime
 
 EKS uses containerd as the default container runtime.
