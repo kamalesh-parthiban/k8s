@@ -1,0 +1,91 @@
+How do you troubleshoot unhealthy Kubernetes nodes?
+
+Step 1 — Identify the problem node
+
+kubectl get nodes
+
+NAME          STATUS     ROLES    AGE
+node-1        Ready      worker   10d
+node-2        NotReady   worker   10d   ← problem
+node-3        Ready      worker   10d
+
+Step 2 — Describe the node
+
+kubectl describe node node-2
+
+Look at:
+
+Conditions:
+  Type              Status
+  MemoryPressure    False     ← OK
+  DiskPressure      True      ← PROBLEM — disk full
+  PIDPressure       False     ← OK
+  Ready             False     ← node unhealthy
+
+Step 3 — Check node conditions meaning
+
+Condition                | Status | Meaning
+-------------------------|--------|-------------------------
+Ready=False              | Bad    | kubelet not working
+MemoryPressure=True      | Bad    | Node RAM full
+DiskPressure=True        | Bad    | Disk full
+PIDPressure=True         | Bad    | Too many processes
+NetworkUnavailable=True  | Bad    | CNI issue (vpc-cni)
+
+Step 4 — SSH into node and check
+
+# SSH into EC2 node
+ssh -i key.pem ec2-user@<node-ip>
+
+# Check kubelet status
+systemctl status kubelet
+
+# Check kubelet logs
+journalctl -u kubelet -f --since "30 min ago"
+
+# Check disk
+df -h
+
+# Check memory
+free -m
+
+# Check CPU
+top
+
+Step 5 — Common fixes
+
+Problem            | Fix
+-------------------|---------------------------------------------------------
+kubelet stopped    | systemctl restart kubelet
+Disk full          | Delete unused images: docker system prune -a
+Memory pressure    | Evict/move pods off node
+Node unreachable   | Check EC2 instance state in AWS Console
+CNI issue          | Restart aws-node pod on that node
+
+Step 6 — Check pods on that node
+
+# See all pods on problem node
+kubectl get pods --all-namespaces \
+  --field-selector spec.nodeName=node-2
+
+Step 7 — Cordon + Drain (if node needs maintenance)
+
+# Stop new pods scheduling on this node
+kubectl cordon node-2
+
+# Evict existing pods gracefully
+kubectl drain node-2 --ignore-daemonsets --delete-emptydir-data
+
+# After fix — bring node back
+kubectl uncordon node-2
+
+In your stack (Karpenter)
+With Karpenter, unhealthy nodes are often auto-replaced:
+
+Node goes NotReady
+        ↓
+Karpenter detects unhealthy node
+        ↓
+Terminates it → provisions new node automatically
+
+But you still check logs to find why it went unhealthy.
