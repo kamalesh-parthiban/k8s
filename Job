@@ -24,3 +24,12 @@ spec:
       containers:
         - name: example-container
           image: image:tag
+
+--------------
+Payment Batch Processing (your domain)
+
+End of day → Job triggers
+        ↓
+Process 1 million transactions
+        ↓
+Generate settlement report → Job completes
