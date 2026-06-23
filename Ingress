@@ -259,5 +259,60 @@ Ingress Rules (your yaml)      ← your routing config
 ClusterIP Services             ← your app services
   ↓
 Your App Pods
+------------------------------------------------------------------
+Ingress controlller yaml
 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ingress-nginx
+  template:
+    metadata:
+      labels:
+        app: ingress-nginx
+    spec:
+      serviceAccountName: ingress-nginx-sa    # custom SA — needs K8s API access
+      containers:
+        - name: ingress-nginx-controller
+          image: registry.k8s.io/ingress-nginx/controller:v1.9.4
+          args:
+            - /nginx-ingress-controller
+            - --ingress-class=nginx
+            - --configmap=$(POD_NAMESPACE)/ingress-nginx-config
+          ports:
+            - name: http
+              containerPort: 80
+            - name: https
+              containerPort: 443
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+            initialDelaySeconds: 5
+            periodSeconds: 5
+-----------------------------------------------------------------
 
