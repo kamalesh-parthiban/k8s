@@ -8,6 +8,11 @@ spec:
   selector:
     matchLabels:
       app: my-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0    # at most 0 pod can be down during update
+      maxSurge: 1          # at most 1 extra pod can be created above replicas
   template:
     metadata:
       labels:
