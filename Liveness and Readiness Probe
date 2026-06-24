@@ -96,9 +96,13 @@ Service → ClusterIP (virtual)
 Endpoints → actual Pod IPs
 
 my-app-service:
-  ClusterIP: 10.96.0.1      ← virtual IP
+  ClusterIP: 10.96.0.1      ← virtual IP - service
   Endpoints: 10.244.1.5:80  ← real pod IP
              10.244.1.6:80  ← real pod IP
+
+kubectl get pods -o wide → Pod IP
+kubectl get endpoints → Pod IP + Port
+Kubernetes generally does not expose separate container IPs because all containers in a Pod share the same network namespace.
 
 ───────────────────────────────────────────
 NOTES
