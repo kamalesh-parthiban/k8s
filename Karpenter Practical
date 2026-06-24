@@ -716,3 +716,39 @@ KARPENTER INSTALLATION STEPS
 12. Test
     deploy 10 pods → nodes added ✅
     delete pods   → nodes removed ✅
+---------------------
+
+karpenter vs NodePool vs EC2NodeClass
+
+1. Karpenter
+
+Karpenter is the Kubernetes controller that:
+
+Watches for unschedulable pods
+Determines the optimal node type
+Launches EC2 instances
+Consolidates underutilized nodes
+Terminates unused nodes
+
+2. NodePool
+
+A NodePool tells Karpenter:
+
+Which workloads can use these nodes
+Allowed instance types
+Capacity type (Spot/On-Demand)
+Architecture
+Limits
+Disruption policies
+
+3. EC2NodeClass
+
+An EC2NodeClass contains AWS-specific configuration:
+
+AMI family
+Subnets
+Security groups
+IAM role
+EBS settings
+User data
+Tags
