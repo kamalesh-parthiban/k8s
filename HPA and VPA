@@ -5,7 +5,7 @@ VPA resizes CPU/memory of existing pods by killing and recreating them — cause
 
 PDB
 
-PodDisruptionBudget ensures minimum number of pods stay running during voluntary disruptions like node drain or maintenance. We define either 
+PodDisruptionBudget ensures minimum number of pods stay running during node drain or maintenance. We define using
 minAvailable to set minimum running pods or maxUnavailable to set maximum pods that can go down at a time. ✅
 
 Timeline with 4 pods + PDB:
