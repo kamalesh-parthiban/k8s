@@ -1,7 +1,7 @@
 what is labels and selector?
 
 Labels (applied to any K8s object)
-Labels are key-value pairs attached to objects (pods, nodes, services, deployments, etc.) to identify and organize them.
+Labels are key-value pairs attached to objects (pods, nodes, services, deployments, etc.) and selector is a filter used by controllers/services to identify and organize them.
 
 An object can have multiple labels
 Labels can be added/updated anytime
