@@ -1,3 +1,7 @@
+So the traffic does not go through a Service virtual IP. Instead, the client gets the individual Pod IPs from DNS and connects directly to the Pods.
+
+This is commonly used by stateful applications like databases (e.g., MongoDB, Cassandra, Kafka) where clients need to reach a specific Pod, not just any Pod.
+
 headless service communicate to other pod using dns name is it true?
 
 yes, Pods communicate directly using this DNS — not through a virtual IP. Even if the pod restarts and gets a new IP, the DNS name stays the same. This is why StatefulSet needs headless service — so slaves can always find the master by name, not by IP."
