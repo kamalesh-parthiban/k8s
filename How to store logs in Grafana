@@ -24,4 +24,56 @@ shipped them off the node before the pod died.
 | Grafana       | Deployment                                                       | Central UI/query layer                          |
 +---------------+------------------------------------------------------------------+-------------------------------------------------+
 
+Yes, that's correct. If a Deployment doesn't specify any volumes, every pod scheduled on that node shares and uses the node's root EBS 
+volume for all their filesystem needs — writable layer, logs, temp files, everything.
+
+EC2 Worker Node (root EBS volume)
+   │
+   ├── Pod A (no volumes)  → writable container layer here, logs here
+   ├── Pod B (no volumes)  → writable container layer here, logs here
+   ├── Pod C (no volumes)  → writable container layer here, logs here
+   └── Pod D (no volumes)  → writable container layer here, logs here
+
+ALL of them sharing the SAME physical disk (the node's root EBS)
+
+This is called "ephemeral storage" in Kubernetes terms — and it's actually something you can (and should) set limits on:
+
+resources:
+  requests:
+    ephemeral-storage: "1Gi"
+  limits:
+    ephemeral-storage: "2Gi"
+
+If you don't set these, a single misbehaving pod (e.g., writing runaway logs, or caching huge temp files) can fill up the entire 
+node's root disk, starving every other pod on that node — this is exactly the kind of scenario that causes disk pressure evictions 
+across pods that had nothing to do with the problem.
+
+Yes, that's correct — that's exactly where logs physically live on the node.
+
+/var/log/pods/<namespace>_<pod-name>_<uid>/<container-name>/0.log
+
+EC2 Worker Node
+   └── Root EBS Volume (e.g., 20-100GB, gp3)
+         └── /var/log/pods/...    ← container logs live here
+         └── /var/lib/containerd/...  ← image layers, container filesystems
+
+The Pod itself gets deleted and recreated
+
+This is the important one: once the pod is deleted, /var/log/pods/<namespace>_<pod-name>_<uid>/... — that entire directory, 
+tied to that specific pod's UID — gets cleaned up by kubelet. The logs on the node's local disk are gone. kubectl logs on the new pod 
+shows nothing from the old one; there's no --previous history to recover because it's a completely different pod object (new UID) as 
+far as Kubernetes is concerned.
+
+This is EXACTLY why Alloy + Loki exists
+
+Pod deleted/recreated
+        ↓
+Local log file on node → deleted by kubelet cleanup
+        ↓
+BUT — if Alloy already shipped those logs to Loki BEFORE the pod died,
+they're safely preserved in Loki, independent of the pod's lifecycle
+
+Yes, absolutely — that's one of the most common Grafana/Loki use cases. You can search for a keyword across all pods, all namespaces, 
+or scoped to whatever you want, using LogQL in Grafana's Explore view.
+
 
