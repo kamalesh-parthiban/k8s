@@ -1,0 +1,11 @@
+Pod logs
+   ↓
+Grafana Alloy (collects logs)
+   ↓
+Loki (stores + indexes logs)
+   ↓
+Grafana (searches + displays logs)
+
+The big practical win for you specifically: if a pod crashes and gets replaced (which happens constantly with Karpenter scaling nodes 
+up/down, or during deployments), kubectl logs on the old pod is gone. But in Loki, those logs are still there because Alloy already 
+shipped them off the node before the pod died.
