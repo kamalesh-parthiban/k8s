@@ -22,3 +22,26 @@ Code  Name                     Meaning
                                overloaded, down for maintenance, or a dependency
                                (database, upstream service) is unreachable.
                                Usually temporary.
+
+---------------------------------------------------------------------------
+
+Quick reference table of exit codes you'll actually run into on EKS:
+
+Exit Code  Meaning
+---------  ------------------------------------------------------------------------
+0          Success
+
+1          General application error
+           (unhandled exception, generic failure)
+
+2          Misuse of shell command / invalid arguments
+
+137        128 + 9 (SIGKILL)
+           → Almost always OOMKilled in Kubernetes (k8s)
+
+139        128 + 11 (SIGSEGV)
+           → Segmentation fault
+
+143        128 + 15 (SIGTERM)
+           → Graceful termination
+             (pod shutdown, normal)
