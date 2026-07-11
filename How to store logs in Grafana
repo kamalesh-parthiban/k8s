@@ -9,3 +9,19 @@ Grafana (searches + displays logs)
 The big practical win for you specifically: if a pod crashes and gets replaced (which happens constantly with Karpenter scaling nodes 
 up/down, or during deployments), kubectl logs on the old pod is gone. But in Loki, those logs are still there because Alloy already 
 shipped them off the node before the pod died.
+
++---------------+------------------------------------------------------------------+-------------------------------------------------+
+| Component     | Deployment type                                                  | Why                                             |
++---------------+------------------------------------------------------------------+-------------------------------------------------+
+| Alloy         | DaemonSet                                                        | Needs local access to log files per node        |
++---------------+------------------------------------------------------------------+-------------------------------------------------+
+| Node Exporter | DaemonSet                                                        | Needs local access to node OS metrics           |
++---------------+------------------------------------------------------------------+-------------------------------------------------+
+| Prometheus    | Deployment/StatefulSet (or fully managed if using Grafana Cloud) | Central scraper; doesn't need per-node presence |
++---------------+------------------------------------------------------------------+-------------------------------------------------+
+| Loki          | Deployment/StatefulSet (or fully managed if using Grafana Cloud) | Central log store; receives pushed data         |
++---------------+------------------------------------------------------------------+-------------------------------------------------+
+| Grafana       | Deployment                                                       | Central UI/query layer                          |
++---------------+------------------------------------------------------------------+-------------------------------------------------+
+
+
