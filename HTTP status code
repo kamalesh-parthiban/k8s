@@ -1,0 +1,24 @@
+Code  Name                     Meaning
+----  -----------------------  ---------------------------------------------------------------
+400   Bad Request              The request itself is malformed — bad syntax, invalid JSON,
+                               missing required fields. The client sent garbage; the server
+                               couldn't even understand it.
+
+401   Unauthorized             You're not authenticated. No valid credentials (missing/invalid
+                               token, expired session). Server doesn't know who you are.
+
+403   Forbidden                You ARE authenticated, but you don't have permission.
+                               Server knows who you are, but says:
+                               "you're not allowed to do this."
+
+404   Not Found                The resource/URL doesn't exist. Wrong endpoint, deleted
+                               resource, or typo in the path.
+
+500   Internal Server Error    Something broke on the server side — unhandled exception,
+                               bug in code, null pointer, etc. Generic
+                               "server crashed while processing" error.
+
+503   Service Unavailable      Server is temporarily unable to handle the request —
+                               overloaded, down for maintenance, or a dependency
+                               (database, upstream service) is unreachable.
+                               Usually temporary.
