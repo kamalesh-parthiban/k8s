@@ -5,6 +5,25 @@ Grafana Alloy (collects logs)
 Loki (stores + indexes logs)
    ↓
 Grafana (searches + displays logs)
+---------------
+All Kubernetes Pods
+        │
+        ▼
+Grafana Alloy (DaemonSet on every node)
+        │
+        ▼
+      Loki
+        │
+        ▼
+Object Storage (S3)  ← long-term log storage
+        │
+        ▼
+     Grafana
+  Search / View Logs
+------------------------------------
+
+Yes — in Grafana's Explore view, use LogQL like {namespace=~".+"} |= "keyword" to search across all pods/namespaces. 
+Narrow the label selector and time range where you can, since an unscoped "search everything" query is the most expensive kind on Loki.
 
 The big practical win for you specifically: if a pod crashes and gets replaced (which happens constantly with Karpenter scaling nodes 
 up/down, or during deployments), kubectl logs on the old pod is gone. But in Loki, those logs are still there because Alloy already 
