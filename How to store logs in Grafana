@@ -21,7 +21,24 @@ Object Storage (S3)  ← long-term log storage
      Grafana
   Search / View Logs
 ------------------------------------
+┌─────────────┐
+                    │   Grafana   │  ← the UI/dashboard layer
+                    └──────┬──────┘
+                           │
+              ┌────────────┴────────────┐
+              │                         │
+      ┌───────▼────────┐      ┌────────▼────────┐
+      │   Prometheus    │      │      Loki       │
+      │  (data source)  │      │  (data source)  │
+      │   metrics        │      │      logs        │
+      └─────────────────┘      └─────────────────┘
 
+Grafana doesn't "have" Loki built in — you add it as a data source, exactly the same way you'd add Prometheus as a data source. 
+In Grafana's UI: Connections → Data sources → Add data source → select "Loki" (or "Prometheus").
+
+Prometheus (with Grafana on top) lets you visualize graphs for every pod, individually or aggregated, since every metric comes 
+with labels identifying exactly which pod, namespace, container it belongs to.
+------------------------------------------------------------------------------------------------------
 Yes — in Grafana's Explore view, use LogQL like {namespace=~".+"} |= "keyword" to search across all pods/namespaces. 
 Narrow the label selector and time range where you can, since an unscoped "search everything" query is the most expensive kind on Loki.
 
@@ -42,6 +59,24 @@ shipped them off the node before the pod died.
 +---------------+------------------------------------------------------------------+-------------------------------------------------+
 | Grafana       | Deployment                                                       | Central UI/query layer                          |
 +---------------+------------------------------------------------------------------+-------------------------------------------------+
+
++------------+----------------------------------------------------------------------------------------------------------------------------------+
+| Component  | Has its own UI?                                                                                                                 |
++------------+----------------------------------------------------------------------------------------------------------------------------------+
+| Prometheus | Yes, actually — a basic built-in web UI at :9090 (lets you run PromQL queries, see targets, but it's fairly bare-bones).      |
++------------+----------------------------------------------------------------------------------------------------------------------------------+
+| Loki       | No — Loki has no UI at all. It only exposes an HTTP API (for pushing logs in, querying logs out).                             |
++------------+----------------------------------------------------------------------------------------------------------------------------------+
+| Grafana    | Yes — this is the actual UI everyone uses for both, regardless of whether the backend is Prometheus or Loki.                  |
++------------+----------------------------------------------------------------------------------------------------------------------------------+
+
++-------------+--------------------------------------------+
+| Tool        | Query Language                             |
++-------------+--------------------------------------------+
+| Prometheus  | PromQL (Prometheus Query Language)         |
++-------------+--------------------------------------------+
+| Loki        | LogQL (Log Query Language)                 |
++-------------+--------------------------------------------+
 
 Yes, that's correct. If a Deployment doesn't specify any volumes, every pod scheduled on that node shares and uses the node's root EBS 
 volume for all their filesystem needs — writable layer, logs, temp files, everything.
