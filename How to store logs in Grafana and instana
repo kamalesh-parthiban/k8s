@@ -129,5 +129,44 @@ they're safely preserved in Loki, independent of the pod's lifecycle
 
 Yes, absolutely — that's one of the most common Grafana/Loki use cases. You can search for a keyword across all pods, all namespaces, 
 or scoped to whatever you want, using LogQL in Grafana's Explore view.
+-----------------------------------------
+Instana
 
+1. Get an Instana account / access
+
+• Sign up for the 14-day free trial or sandbox if you don't already have GlobalPayments' Instana credentials.
+
+• Once in, go to your Instana dashboard → Settings → Agents to find:
+    • Agent Key (unique to your Instana tenant)
+    • Endpoint Host and Endpoint Port (where agents send data — SaaS URL)
+
+2. Create a namespace for the agent
+
+kubectl create namespace instana-agent
+
+3. Add the Instana Helm repo
+
+helm repo add instana https://agents.instana.io/helm
+helm repo update
+
+4. Install the Instana Agent (DaemonSet)
+
+helm install instana-agent instana/instana-agent \
+  --namespace instana-agent \
+  --set agent.key=<YOUR_AGENT_KEY> \
+  --set agent.endpointHost=<YOUR_ENDPOINT_HOST> \
+  --set agent.endpointPort=443 \
+  --set cluster.name="test-cluster" \
+  --set zone.name="ap-south-1"
+
+5. Verify the agent is running
+
+kubectl get pods -n instana-agent
+
+kubectl logs -n instana-agent <agent-pod-name>
+
+6. Deploy a test workload (so there's something to discover)
+
+kubectl create deployment nginx-test --image=nginx --replicas=2
+kubectl expose deployment nginx-test --port=80
 
